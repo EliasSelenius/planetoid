@@ -1,7 +1,7 @@
 
 /*
 
-    compile command: ../bin/plang.exe build ../common/OpenGL.pog ../common/glfw3.pog cflags -lglfw3dll
+    ../plang/bin/plang.exe build ../plang/common/OpenGL.pog ../plang/common/glfw3.pog cflags -lglfw3dll
 
     TODO:
         - 2d noise function
