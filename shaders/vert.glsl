@@ -2,8 +2,6 @@
 
 #define pi 3.1415
 
-in vec2 aPos;
-
 uniform float aspect = 9.0 / 16.0;
 
 uniform vec2 cam_pos = vec2(0.0);
@@ -13,6 +11,14 @@ uniform float zoom = 1.0;
 uniform vec2 entity_pos;
 uniform float entity_rot = 0;
 uniform float entity_scale = 1;
+
+layout (location = 0) in vec2 a_Pos;
+layout (location = 1) in vec2 a_Uv;
+layout (location = 2) in vec4 a_Tint;
+
+out V2F {
+    vec2 uv;
+} v2f;
 
 mat3 createMatrix(vec2 pos, float rot, float scale) {
     float c = cos(rot) * scale;
@@ -36,7 +42,9 @@ mat3 createMatrixInv(vec2 pos, float rot, float scale) {
 
 void main() {
 
-    vec3 v = vec3(aPos, 1);
+    v2f.uv = a_Pos;
+
+    vec3 v = vec3(a_Pos, 1);
 
     v *= createMatrix(entity_pos, entity_rot, entity_scale);
     v *= createMatrixInv(cam_pos, cam_rot, zoom);

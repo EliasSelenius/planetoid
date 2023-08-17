@@ -5,10 +5,13 @@ struct VoxelGrid {
     float32* data;
     uint32 res;
 
-    Mesh mesh;
+    DrawBuffers db;
+    uint32 inds_outline_ebo;
+
     uint32 numVerts;
-    vec2* verts;
+    vertex* verts;
     uint32* inds; // list
+    uint32* inds_outline; // list
 }
 
 const TopLeftBit = 8;
@@ -18,10 +21,15 @@ const BottomRightBit = 1;
 
 const PointOnThreshold = 0.001;
 
-void addTri(uint32** inds, uint32 i1, uint32 i2, uint32 i3) {
-    add(inds, *i1);
-    add(inds, *i2);
-    add(inds, *i3);
+void add_tri(with VoxelGrid* grid, uint32 i1, uint32 i2, uint32 i3) {
+    list_add(*grid.inds, *i1);
+    list_add(*grid.inds, *i2);
+    list_add(*grid.inds, *i3);
+}
+
+void add_outline(with VoxelGrid* grid, uint32 i1, uint32 i2) {
+    list_add(*grid.inds_outline, *i1);
+    list_add(*grid.inds_outline, *i2);
 }
 
 uint32 getIndex(uint32 res, uint32 x, uint32 y) {
@@ -39,7 +47,7 @@ VoxelGrid createVoxelGrid(uint32 res) {
 
     //              3r^2 - 2r
     grid.numVerts = 3 * grid.res * grid.res - 2 * grid.res;
-    grid.verts = alloc vec2[grid.numVerts];
+    grid.verts = alloc vertex[grid.numVerts];
 
     float32 half = grid.res as float32 / 2.0;
 
@@ -51,15 +59,20 @@ VoxelGrid createVoxelGrid(uint32 res) {
         }
     }
 
-    grid.inds = createList(sizeof uint32 as uint32);
-    grid.mesh = createMesh();
+    grid.inds = list_create(sizeof uint32 as uint32);
+    grid.inds_outline = list_create(sizeof uint32 as uint32);
+
+    grid.db = create_draw_buffers();
+
+    glGenBuffers(1, *grid.inds_outline_ebo);
 
     return grid;
 }
 
 void updateGridMesh(VoxelGrid* grid) {
 
-    listClear(grid.inds);
+    list_clear(grid.inds);
+    list_clear(grid.inds_outline);
 
     uint32 size = grid.res - 1;
     let g1_byteoffset = grid.res * grid.res;
@@ -104,67 +117,104 @@ void updateGridMesh(VoxelGrid* grid) {
             switch (mask) {
 
                 // corners
-                case TopLeftBit: addTri(*grid.inds, i1, e2, e1); break;
-                case TopRightBit: addTri(*grid.inds, i2, e1, e3); break;
-                case BottomRightBit: addTri(*grid.inds, i4, e3, e4); break;
-                case BottomLeftBit: addTri(*grid.inds, i3, e4, e2); break;
+                case TopLeftBit: add_tri(grid, i1, e2, e1); break;
+                case TopRightBit: add_tri(grid, i2, e1, e3); break;
+                case BottomRightBit: add_tri(grid, i4, e3, e4); break;
+                case BottomLeftBit: add_tri(grid, i3, e4, e2); break;
 
                 // inverted corners
                 case 0x0F & ~TopLeftBit:
-                    addTri(*grid.inds, i4, e1, e2);
-                    addTri(*grid.inds, i4, i2, e1);
-                    addTri(*grid.inds, i4, e2, i3);
+                    add_tri(grid, i4, e1, e2);
+                    add_tri(grid, i4, i2, e1);
+                    add_tri(grid, i4, e2, i3);
                     break;
                 case 0x0F & ~TopRightBit:
-                    addTri(*grid.inds, i3, e3, e1);
-                    addTri(*grid.inds, i3, i4, e3);
-                    addTri(*grid.inds, i3, e1, i1);
+                    add_tri(grid, i3, e3, e1);
+                    add_tri(grid, i3, i4, e3);
+                    add_tri(grid, i3, e1, i1);
                     break;
                 case 0x0F & ~BottomRightBit:
-                    addTri(*grid.inds, i1, e3, e4);
-                    addTri(*grid.inds, i1, e3, i2);
-                    addTri(*grid.inds, i1, e4, i3);
+                    add_tri(grid, i1, e3, e4);
+                    add_tri(grid, i1, e3, i2);
+                    add_tri(grid, i1, e4, i3);
                     break;
                 case 0x0F & ~BottomLeftBit:
-                    addTri(*grid.inds, i2, e2, e4);
-                    addTri(*grid.inds, i2, i1, e2);
-                    addTri(*grid.inds, i2, e4, i4);
+                    add_tri(grid, i2, e2, e4);
+                    add_tri(grid, i2, i1, e2);
+                    add_tri(grid, i2, e4, i4);
                     break;
 
                 // horizontal 'walls'
                 case TopLeftBit | TopRightBit:
-                    addTri(*grid.inds, i1, e2, i2);
-                    addTri(*grid.inds, i2, e2, e3);
+                    add_tri(grid, i1, e2, i2);
+                    add_tri(grid, i2, e2, e3);
                     break;
                 case BottomLeftBit | BottomRightBit:
-                    addTri(*grid.inds, i3, e3, e2);
-                    addTri(*grid.inds, i4, e3, i3);
+                    add_tri(grid, i3, e3, e2);
+                    add_tri(grid, i4, e3, i3);
                     break;
                 // vertical 'walls'
                 case TopLeftBit | BottomLeftBit:
-                    addTri(*grid.inds, i1, i3, e1);
-                    addTri(*grid.inds, i3, e4, e1);
+                    add_tri(grid, i1, i3, e1);
+                    add_tri(grid, i3, e4, e1);
                     break;
                 case TopRightBit | BottomRightBit:
-                    addTri(*grid.inds, i2, e1, i4);
-                    addTri(*grid.inds, i4, e1, e4);
+                    add_tri(grid, i2, e1, i4);
+                    add_tri(grid, i4, e1, e4);
                     break;
 
                 // diagonals
                 case TopLeftBit | BottomRightBit:
-                    addTri(*grid.inds, i1, e2, e1);
-                    addTri(*grid.inds, i4, e3, e4);
+                    add_tri(grid, i1, e2, e1);
+                    add_tri(grid, i4, e3, e4);
                     break;
                 case TopRightBit | BottomLeftBit:
-                    addTri(*grid.inds, i2, e1, e3);
-                    addTri(*grid.inds, i3, e4, e2);
+                    add_tri(grid, i2, e1, e3);
+                    add_tri(grid, i3, e4, e2);
                     break;
 
                 // solid block
                 case 0x0F:
-                    addTri(*grid.inds, i1, i3, i2);
-                    addTri(*grid.inds, i2, i3, i4);
+                    add_tri(grid, i1, i3, i2);
+                    add_tri(grid, i2, i3, i4);
                     break;
+            }
+
+            // outlines
+            switch (mask) {
+
+                // corners
+                case TopLeftBit: add_outline(grid, e2, e1); break;
+                case TopRightBit: add_outline(grid, e1, e3); break;
+                case BottomRightBit: add_outline(grid, e3, e4); break;
+                case BottomLeftBit: add_outline(grid, e4, e2); break;
+
+                // inverted corners
+                case 0x0F & ~TopLeftBit: add_outline(grid, e1, e2); break;
+                case 0x0F & ~TopRightBit: add_outline(grid, e3, e1); break;
+                case 0x0F & ~BottomRightBit: add_outline(grid, e3, e4); break;
+                case 0x0F & ~BottomLeftBit: add_outline(grid, e2, e4); break;
+
+                // horizontal 'walls'
+                case TopLeftBit | TopRightBit:
+                case BottomLeftBit | BottomRightBit: add_outline(grid, e3, e2); break;
+
+                // vertical 'walls'
+                case TopLeftBit | BottomLeftBit:
+                case TopRightBit | BottomRightBit: add_outline(grid, e1, e4); break;
+
+                // diagonals
+                case TopLeftBit | BottomRightBit:
+                    add_outline(grid, e2, e1);
+                    add_outline(grid, e3, e4);
+                    break;
+                case TopRightBit | BottomLeftBit:
+                    add_outline(grid, e1, e3);
+                    add_outline(grid, e4, e2);
+                    break;
+
+                // solid block
+                case 0x0F: break;
             }
         }
     }
@@ -214,7 +264,8 @@ void updateGridMesh(VoxelGrid* grid) {
         }
     }
 
-    updateMeshData(*grid.mesh, grid.verts, grid.numVerts, grid.inds, length(grid.inds));
+    update_buffers(*grid.db, grid.verts, grid.numVerts, grid.inds, list_length(grid.inds));
+    update_buffer(grid.inds_outline_ebo, list_length(grid.inds_outline) * sizeof uint32 as uint32, grid.inds_outline);
 }
 
 vec2 getLocalCoords(VoxelGrid* grid, float32 x, float32 y) {
@@ -262,8 +313,8 @@ void VoxelGrid_removeCircle(VoxelGrid* grid, float32 radius, float32 x, float32 
     int32 y_min = clamp(ry - iradius, 0, grid.res as int32);
     int32 y_max = clamp(ry + iradius, 0, grid.res as int32);
 
-    for ix in x_min .. x_max {
-        for iy in y_min .. y_max {
+    for ix in x_min .. x_max + 1 {
+        for iy in y_min .. y_max + 1 {
             float32 xf = ix as float32 - p.x;
             float32 yf = iy as float32 - p.y;
             float32 len = sqrtf(xf*xf + yf*yf);
@@ -273,6 +324,25 @@ void VoxelGrid_removeCircle(VoxelGrid* grid, float32 radius, float32 x, float32 
             if grid.data[i] > newValue grid.data[i] = newValue;
         }
     }
+}
+
+vec2 calcCenterOfMass(VoxelGrid* grid) {
+    vec2 res = vec(0, 0);
+    float32 total = 0;
+
+    uint32 x = -1; while ++x < grid.res {
+        uint32 y = -1; while ++y < grid.res {
+            let i = x * grid.res + y;
+            float32 value = grid.data[i];
+            if value > PointOnThreshold {
+                total += value;
+                res = add(res, mul(vec(x, y), value));
+            }
+        }
+    }
+
+    res = mul(res, 1.0 / total);
+    return res;
 }
 
 struct Intersection {
@@ -285,7 +355,33 @@ vec2 rot90deg(vec2 v) {
     return res;
 }
 
+struct Lineseg {
+    vec2 start, end;
+}
+
+struct Ray {
+    vec2 origin, dir;
+}
+
+int32 ray_lineseg_intersects(Ray ray, Lineseg seg, Intersection* out_intersection) {
+    let A = sub(seg.start, ray.origin);
+    let B = sub(seg.end, ray.origin);
+
+    let tangent = rot90deg(ray.dir);
+
+    let d1 = dot(A, tangent);
+    let d2 = dot(B, tangent);
+
+    // if d1 & 0x80000000 == d2 & 0x80000000 {
+    //     return true;
+    // }
+
+    return false;
+}
+
 int32 point_intersects(vec2 point, VoxelGrid* grid, Intersection* out_intersection) {
+
+    @out_intersection = {0} as Intersection;
 
     point = getLocalCoords(grid, point.x, point.y);
     int32 x = point.x as int32;
@@ -401,23 +497,4 @@ int32 point_intersects(vec2 point, VoxelGrid* grid, Intersection* out_intersecti
     if out_intersection.distance <= 0 return true;
 
     return false;
-}
-
-vec2 calcCenterOfMass(VoxelGrid* grid) {
-    vec2 res = vec(0, 0);
-    float32 total = 0;
-
-    uint32 x = -1; while ++x < grid.res {
-        uint32 y = -1; while ++y < grid.res {
-            let i = x * grid.res + y;
-            float32 value = grid.data[i];
-            if value > PointOnThreshold {
-                total += value;
-                res = add(res, mul(vec(x, y), value));
-            }
-        }
-    }
-
-    res = mul(res, 1.0 / total);
-    return res;
 }

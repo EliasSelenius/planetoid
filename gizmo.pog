@@ -1,17 +1,18 @@
 
-namespace gizmo;
 
-uint32 vao, vbo, ebo;
-
-// struct GizmoLine {
-//     vec2 start;
-//     vec2 end;
-// }
+uint32 debug_lines_vao;
+uint32 debug_lines_vbo;
+vertex* debug_lines_vertices; // list
 
 
-void initGizmos() {
+void init_gizmos() {
+
+    debug_lines_vertices = list_create(sizeof vertex as uint32);
 }
 
+void dispatch_gizmos() {
+
+}
 
 // void drawArrow(vec2 start, vec2 dir) {
 //     let end = start + dir;
