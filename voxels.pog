@@ -1,6 +1,6 @@
 
 struct VoxelGrid {
-    Transform transform;
+    Transform2D transform;
 
     float32* data;
     uint32 res;
@@ -38,7 +38,7 @@ uint32 getIndex(uint32 res, uint32 x, uint32 y) {
 
 VoxelGrid createVoxelGrid(uint32 res) {
     VoxelGrid grid;
-    grid.transform.pos = vec(0, 0);
+    grid.transform.pos = make_vec(0, 0);
     grid.transform.rot = 0;
     // grid.transform.scale = 1;
 
@@ -327,7 +327,7 @@ void VoxelGrid_removeCircle(VoxelGrid* grid, float32 radius, float32 x, float32 
 }
 
 vec2 calcCenterOfMass(VoxelGrid* grid) {
-    vec2 res = vec(0, 0);
+    vec2 res = make_vec(0, 0);
     float32 total = 0;
 
     uint32 x = -1; while ++x < grid.res {
@@ -336,7 +336,7 @@ vec2 calcCenterOfMass(VoxelGrid* grid) {
             float32 value = grid.data[i];
             if value > PointOnThreshold {
                 total += value;
-                res = add(res, mul(vec(x, y), value));
+                res = add(res, mul(make_vec(x, y), value));
             }
         }
     }
@@ -351,7 +351,7 @@ struct Intersection {
 }
 
 vec2 rot90deg(vec2 v) {
-    vec2 res = vec(-v.y, v.x); // rotate 90 degrees to the left. (multiplication with imaginary unit)
+    vec2 res = make_vec(-v.y, v.x); // rotate 90 degrees to the left. (multiplication with imaginary unit)
     return res;
 }
 
@@ -420,57 +420,57 @@ int32 point_intersects(vec2 point, VoxelGrid* grid, Intersection* out_intersecti
     switch (mask) {
         // corners
         case TopLeftBit:
-            a = vec(p1, 1);
-            b = vec(0, 1 - p1);
+            a = make_vec(p1, 1);
+            b = make_vec(0, 1 - p1);
             break;
         case TopRightBit:
-            a = vec(1, 1 - p2);
-            b = vec(1 - p2, 1);
+            a = make_vec(1, 1 - p2);
+            b = make_vec(1 - p2, 1);
             break;
         case BottomRightBit:
-            a = vec(1 - p4, 0);
-            b = vec(1, p4);
+            a = make_vec(1 - p4, 0);
+            b = make_vec(1, p4);
             break;
         case BottomLeftBit:
-            a = vec(0, p3);
-            b = vec(p3, 0);
+            a = make_vec(0, p3);
+            b = make_vec(p3, 0);
             break;
 
         // inverted corners
         case 0x0F & ~TopLeftBit:
-            a = vec(0, p3);
-            b = vec(1 - p2, 1);
+            a = make_vec(0, p3);
+            b = make_vec(1 - p2, 1);
             break;
         case 0x0F & ~TopRightBit:
-            a = vec(p1, 1);
-            b = vec(1, p4);
+            a = make_vec(p1, 1);
+            b = make_vec(1, p4);
             break;
         case 0x0F & ~BottomRightBit:
-            a = vec(1, 1 - p2);
-            b = vec(p3, 0);
+            a = make_vec(1, 1 - p2);
+            b = make_vec(p3, 0);
             break;
         case 0x0F & ~BottomLeftBit:
-            a = vec(1 - p4, 0);
-            b = vec(0, 1 - p1);
+            a = make_vec(1 - p4, 0);
+            b = make_vec(0, 1 - p1);
             break;
 
         // horizontal 'walls'
         case TopLeftBit | TopRightBit:
-            a = vec(1, 1 - p2);
-            b = vec(0, 1 - p1);
+            a = make_vec(1, 1 - p2);
+            b = make_vec(0, 1 - p1);
             break;
         case BottomLeftBit | BottomRightBit:
-            a = vec(0, p3);
-            b = vec(1, p4);
+            a = make_vec(0, p3);
+            b = make_vec(1, p4);
             break;
         // vertical 'walls'
         case TopLeftBit | BottomLeftBit:
-            a = vec(p1, 1);
-            b = vec(p3, 0);
+            a = make_vec(p1, 1);
+            b = make_vec(p3, 0);
             break;
         case TopRightBit | BottomRightBit:
-            a = vec(1 - p4, 0);
-            b = vec(1 - p2, 1);
+            a = make_vec(1 - p4, 0);
+            b = make_vec(1 - p2, 1);
             break;
 
         // // diagonals
@@ -486,10 +486,11 @@ int32 point_intersects(vec2 point, VoxelGrid* grid, Intersection* out_intersecti
     }
 
 
-    vec2 local = sub(point, vec(x, y));
+    vec2 local = sub(point, make_vec(x, y));
     local = sub(local, a);
 
     vec2 normal = rot90deg(sub(b, a));
+    normal = normalize(normal);
 
     out_intersection.distance = dot(normal, local);
     out_intersection.surface_normal = rotate_vec(normal, grid.transform.rot);

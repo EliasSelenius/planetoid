@@ -20,7 +20,7 @@
 include "../grax/grax.pog";
 
 Shader shader;
-Transform camera;
+Transform2D camera;
 
 VoxelGrid voxelGrid;
 float32 voxel_edit_radius = 1;
@@ -35,13 +35,8 @@ void applyCamera() {
     glUniform1f(glGetUniformLocation(shader.gl_handle, "cam_rot"), camera.rot);
 }
 
-struct Transform {
-    vec2 pos;
-    float32 rot;
-    float32 scale;
-}
 
-void applyTransform(Transform t) {
+void applyTransform(Transform2D t) {
     glUniform2f(glGetUniformLocation(shader.gl_handle, "entity_pos"), t.pos.x, t.pos.y);
     glUniform1f(glGetUniformLocation(shader.gl_handle, "entity_rot"), t.rot);
     glUniform1f(glGetUniformLocation(shader.gl_handle, "entity_scale"), t.scale);
@@ -61,33 +56,6 @@ vec2 rotate_vec(vec2 dir, float32 angle) {
     return res;
 }
 
-vec2 right(Transform t) { return vec(cosf(t.rot), sinf(t.rot)); }
-vec2 up(Transform t) { return vec(-sinf(t.rot), cosf(t.rot)); }
-
-vec2 local2world(Transform t, vec2 p) { return local2world(t, p.x, p.y); }
-vec2 local2world(Transform t, float32 x, float32 y) {
-    float32 c = cosf(t.rot) * t.scale;
-    float32 s = sinf(t.rot) * t.scale;
-
-    vec2 res;
-    res.x = c*x + s*y + t.pos.x;
-    res.y = -s*x + c*y + t.pos.y;
-    return res;
-}
-
-vec2 world2local(Transform t, vec2 p) { return world2local(t, p.x, p.y); }
-vec2 world2local(Transform t, float32 x, float32 y) {
-    float32 c = cosf(t.rot) / t.scale;
-    float32 s = sinf(t.rot) / t.scale;
-
-    float32 px = x - t.pos.x;
-    float32 py = y - t.pos.y;
-
-    vec2 res;
-    res.x = c*px - s*py;
-    res.y = c*py + s*px;
-    return res;
-}
 
 const entitiesCapacity = 256;
 int32 entitiesLength = 0;
@@ -95,7 +63,7 @@ Entity* entities;
 Entity* player;
 
 struct Entity {
-    Transform transform;
+    Transform2D transform;
     DrawBuffers db;
     vec2 vel;
 }
@@ -110,11 +78,11 @@ Entity* appendEntity(DrawBuffers db) {
     }
 
     let res = *entities[entitiesLength++];
-    res.transform.pos = vec(0, 0);
+    res.transform.pos = make_vec(0, 0);
     res.transform.scale = 1;
     res.transform.rot = 0;
     res.db = db;
-    res.vel = vec(0, 0);
+    res.vel = make_vec(0, 0);
     return res;
 }
 
@@ -281,11 +249,22 @@ void load() {
         image.height = size;
         image.pixels = malloc(sizeof(Color) * size * size);
 
-        for i in 0 .. size * size {
-            let v = (random(i) + 1.0) / 2.0 ;
-            if v < 0 print("v: ", v, "\n");
-            uint8 c = (v * 255) as uint8;
-            image.pixels[i] = {c, c, c, 255};
+        // for i in 0 .. size * size {
+        //     let v = (random(i) + 1.0) / 2.0 ;
+        //     if v < 0 print("v: ", v, "\n");
+        //     uint8 c = (v * 255) as uint8;
+        //     image.pixels[i] = {c, c, c, 255};
+        // }
+
+        for x : 0 .. size {
+            for y : 0 .. size {
+                float32 d = 10.0;
+                let g = gnoise(x / d, y / d);
+                let v = (g + 1.0) / 2.0 ;
+
+                uint8 c = (v * 255) as uint8;
+                image.pixels[x * size + y] = {c, c, c, 255};
+            }
         }
 
         random_texture = create_texture2D(image);
@@ -313,7 +292,7 @@ void load() {
     player = appendEntity(genCircle(4, 0.1f));
 
     voxelGrid = generatePlanet();
-    voxelGrid.transform.pos = vec(-20, 30);
+    voxelGrid.transform.pos = make_vec(-20, 30);
     // voxelGrid.transform.rot = Pi / 3;
 
     voxelMesh_circle = genCircle(360, 1);
@@ -325,15 +304,22 @@ VoxelGrid generatePlanet() {
 
     float32 half = grid.res as float32 / 2;
 
-    for uint32 x in 0 .. grid.res {
-        for uint32 y in 0 .. grid.res {
+    for uint32 x : 0 .. grid.res {
+        for uint32 y : 0 .. grid.res {
             float32 xf = x as float32 - half;
             float32 yf = y as float32 - half;
             float32 len = sqrtf(xf*xf + yf*yf);
+            const scale = 4.0;
+            let h = (gnoise(100 + xf / len * scale, 100 + yf / len * scale) + 1.0) / 2.0;
+            h *= 10;
+            h += 30;
 
             uint32 i = x * grid.res + y;
 
-            grid.data[i] = clamp(40 - len, 0, 1);
+            grid.data[i] = clamp(h - len, 0, 1);
+
+            // grid.data[i] = clamp(40 - len, 0, 1);
+
             // if len < 40 grid.data[i] = clamp(random(i as int32), 0, 1);
             // else grid.data[i] = 0;
         }
@@ -343,17 +329,19 @@ VoxelGrid generatePlanet() {
     return grid;
 }
 
-int32 is_nan(float32 x) {
-    return x != x;
-}
-
-int32 is_nan(vec2 v) {
-    return is_nan(v.x) or is_nan(v.y);
+void on_key_input(GLFWwindow* window, int32 key, int32 scancode, int32 action, int32 mods) {
+    if action == GLFW_PRESS {
+        switch key {
+            case GLFW_KEY_F11: toggle_fullscreen(main_window); break;
+        }
+    }
 }
 
 int32 main() {
 
     grax_init();
+
+    glfwSetKeyCallback(main_window, on_key_input);
 
     load();
 
@@ -382,7 +370,7 @@ int32 main() {
 
         float32 c = cosf(player.transform.rot);
         float32 s = sinf(player.transform.rot);
-        vec2 dir = vec(dot(vec(c, s), wasd), dot(vec(-s, c), wasd));
+        vec2 dir = make_vec(dot(make_vec(c, s), wasd), dot(make_vec(-s, c), wasd));
 
         player.vel = add(player.vel, mul(dir, 0.01));
 
@@ -451,10 +439,10 @@ int32 main() {
             glDrawArrays(GL_POINTS, 0, voxelGrid.numVerts as int32);
 
             // draw outline
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, voxelGrid.inds_outline_ebo);
-            glDrawElements(GL_LINES, list_length(voxelGrid.inds_outline), GL_UNSIGNED_INT, null);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, voxelGrid.db.ebo);
-            glBindVertexArray(0);
+            // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, voxelGrid.inds_outline_ebo);
+            // glDrawElements(GL_LINES, list_length(voxelGrid.inds_outline), GL_UNSIGNED_INT, null);
+            // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, voxelGrid.db.ebo);
+            // glBindVertexArray(0);
         }
     }
 }

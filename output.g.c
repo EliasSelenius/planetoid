@@ -13,7 +13,6 @@ typedef double float64;
 int printf(const char* format, ...);
 
 // Structs forward declarations
-typedef struct Transform Transform;
 typedef struct Entity Entity;
 typedef struct Planet Planet;
 typedef struct VoxelGrid VoxelGrid;
@@ -36,6 +35,14 @@ typedef struct vertex vertex;
 typedef struct List List;
 typedef struct vec2 vec2;
 typedef struct ivec2 ivec2;
+typedef struct vec3 vec3;
+typedef struct ivec3 ivec3;
+typedef struct vec4 vec4;
+typedef struct ivec4 ivec4;
+typedef struct mat4 mat4;
+typedef struct quat quat;
+typedef struct Transform Transform;
+typedef struct Transform2D Transform2D;
 typedef struct Image Image;
 
 // Enums
@@ -704,16 +711,39 @@ typedef struct ivec2 {
     int32 x;
     int32 y;
 } ivec2;
+typedef struct vec3 {
+    float32 x;
+    float32 y;
+    float32 z;
+} vec3;
+typedef struct ivec3 {
+    int32 x;
+    int32 y;
+    int32 z;
+} ivec3;
+typedef struct vec4 {
+    float32 x;
+    float32 y;
+    float32 z;
+    float32 w;
+} vec4;
+typedef struct ivec4 {
+    int32 x;
+    int32 y;
+    int32 z;
+    int32 w;
+} ivec4;
+typedef struct quat {
+    float32 x;
+    float32 y;
+    float32 z;
+    float32 w;
+} quat;
 typedef struct Image {
     uint32 width;
     uint32 height;
     Color* pixels;
 } Image;
-typedef struct Transform {
-    vec2 pos;
-    float32 rot;
-    float32 scale;
-} Transform;
 typedef struct Intersection {
     vec2 surface_normal;
     float32 distance;
@@ -725,6 +755,11 @@ typedef struct vertex {
     float32 v;
     Color color;
 } vertex;
+typedef struct Transform2D {
+    vec2 pos;
+    float32 rot;
+    float32 scale;
+} Transform2D;
 typedef struct Planet {
     DrawBuffers db;
     vec2 pos;
@@ -743,7 +778,7 @@ typedef struct Ray {
     vec2 dir;
 } Ray;
 typedef struct VoxelGrid {
-    Transform transform;
+    Transform2D transform;
     float32* data;
     uint32 res;
     DrawBuffers db;
@@ -753,27 +788,32 @@ typedef struct VoxelGrid {
     uint32* inds;
     uint32* inds_outline;
 } VoxelGrid;
+typedef struct Transform {
+    vec3 position;
+    vec3 scale;
+    quat rotation;
+} Transform;
 typedef struct Entity {
-    Transform transform;
+    Transform2D transform;
     DrawBuffers db;
     vec2 vel;
 } Entity;
+typedef struct mat4 {
+    vec4 row1;
+    vec4 row2;
+    vec4 row3;
+    vec4 row4;
+} mat4;
 
 // Forward declarations
 static void init_gizmos();
 static void dispatch_gizmos();
 static void applyCamera();
-static void applyTransform(Transform t);
+static void applyTransform(Transform2D t);
 static void uniform_entity_pos(vec2 pos);
 static void uniform_entity_rot(float32 rot);
 static void uniform_entity_scale(float32 scale);
 static vec2 rotate_vec(vec2 dir, float32 angle);
-static vec2 right(Transform t);
-static vec2 up(Transform t);
-static vec2 local2world1(Transform t, vec2 p);
-static vec2 local2world2(Transform t, float32 x, float32 y);
-static vec2 world2local1(Transform t, vec2 p);
-static vec2 world2local2(Transform t, float32 x, float32 y);
 static Entity* appendEntity(DrawBuffers db);
 static DrawBuffers genCircle(int32 res, float32 radius);
 static Planet genPlanet(float32 radius, float32 dist, float32 year);
@@ -784,8 +824,7 @@ static void mouse_scrollCallback(GLFWwindow* w, float64 x, float64 y);
 static Texture2D load_texture(char* file_name);
 static void load();
 static VoxelGrid generatePlanet();
-static int32 is_nan1(float32 x);
-static int32 is_nan2(vec2 v);
+static void on_key_input(GLFWwindow* window, int32 key, int32 scancode, int32 action, int32 mods);
 int32 main();
 static void add_tri(VoxelGrid* grid, uint32 i1, uint32 i2, uint32 i3);
 static void add_outline(VoxelGrid* grid, uint32 i1, uint32 i2);
@@ -953,13 +992,16 @@ static void sb_append3(StringBuilder* sb, char c);
 static void sb_insert(StringBuilder* sb, int32 loc, string str);
 static void sb_remove(StringBuilder* sb, int32 loc, uint32 num_chars);
 static void sb_clear(StringBuilder* sb);
+static vec2 window_size();
 static int32 key1(char c);
 static int32 key2(int32 c);
 static int32 mouse(int32 btn);
 static int32 grax_loop();
-static void on_resize(GLFWwindow* main_window, int32 w, int32 h);
 static void grax_init();
+static void on_resize(GLFWwindow* window, int32 w, int32 h);
 static void opengl_debug_callback(GLenum source, GLenum _type, GLuint id, GLenum severity, GLsizei length, GLchar* message, void* userParam);
+static GLFWmonitor* get_ideal_monitor();
+static void toggle_fullscreen(GLFWwindow* window);
 static uint32 makeshader(uint32 program, GLenum _type, char* code);
 static Shader create_shader(char* fragsrc, char* vertsrc);
 static Color rgba(uint32 i);
@@ -990,25 +1032,80 @@ float64 sin(float64 t);
 float32 sinf(float32 t);
 float64 cos(float64 t);
 float32 cosf(float32 t);
+float64 tan(float64 t);
+float32 tanf(float32 t);
 float64 sqrt(float64 x);
 float32 sqrtf(float32 x);
+float32 floorf(float32 x);
 static float32 random(int32 seed);
+static vec2 random_vec2(float32 x, float32 y);
+static float32 gnoise(float32 x, float32 y);
+static int32 min(int32 a, int32 b);
+static int32 max(int32 a, int32 b);
 static int32 clamp1(int32 t, int32 min, int32 max);
 static float32 clamp2(float32 t, float32 min, float32 max);
 static float32 lerp1(float32 t, float32 a, float32 b);
 static int32 round2int(float32 x);
-static vec2 vec(float32 x, float32 y);
-static vec2 sub(vec2 a, vec2 b);
-static vec2 add(vec2 a, vec2 b);
+static float32 fract(float32 x);
+static int32 is_nan1(float32 x);
+static int32 is_nan2(vec2 v);
+static vec2 make_vec1(float32 x, float32 y);
+static vec3 make_vec2(float32 x, float32 y, float32 z);
+static vec4 make_vec3(float32 x, float32 y, float32 z, float32 w);
+static vec2 sub1(vec2 a, vec2 b);
+static vec2 add1(vec2 a, vec2 b);
 static vec2 mul1(vec2 a, vec2 b);
 static vec2 mul2(vec2 a, float32 s);
-static vec2 neg(vec2 a);
-static float32 dot(vec2 a, vec2 b);
-static float32 sqlength(vec2 a);
-static float32 length(vec2 a);
-static vec2 normalize(vec2 a);
-static vec2 reflect(vec2 a, vec2 normal);
+static vec2 neg1(vec2 a);
+static vec3 sub2(vec3 a, vec3 b);
+static vec3 add2(vec3 a, vec3 b);
+static vec3 mul3(vec3 a, vec3 b);
+static vec3 mul4(vec3 a, float32 s);
+static vec3 neg2(vec3 a);
+static vec4 sub3(vec4 a, vec4 b);
+static vec4 add3(vec4 a, vec4 b);
+static vec4 mul5(vec4 a, vec4 b);
+static vec4 mul6(vec4 a, float32 s);
+static vec4 neg3(vec4 a);
+static float32 dot1(vec2 a, vec2 b);
+static float32 sqlength1(vec2 a);
+static float32 length1(vec2 a);
+static vec2 normalize1(vec2 a);
+static vec2 reflect1(vec2 a, vec2 normal);
 static vec2 lerp2(float32 t, vec2 a, vec2 b);
+static float32 dot2(vec3 a, vec3 b);
+static float32 sqlength2(vec3 a);
+static float32 length2(vec3 a);
+static vec3 normalize2(vec3 a);
+static vec3 reflect2(vec3 a, vec3 normal);
+static vec3 lerp3(float32 t, vec3 a, vec3 b);
+static vec3 cross(vec3 a, vec3 b);
+static float32 dot3(vec4 a, vec4 b);
+static float32 sqlength3(vec4 a);
+static float32 length3(vec4 a);
+static vec4 normalize3(vec4 a);
+static vec4 reflect3(vec4 a, vec4 normal);
+static vec4 lerp4(float32 t, vec4 a, vec4 b);
+static vec4 col1(mat4 m);
+static vec4 col2(mat4 m);
+static vec4 col3(mat4 m);
+static vec4 col4(mat4 m);
+static mat4 transpose(mat4 m);
+static mat4 mul7(mat4 a, mat4 b);
+static vec4 mul8(mat4 m, vec4 v);
+static vec4 mul9(vec4 v, mat4 m);
+static mat4 perspective(float32 fovy, float32 aspect, float32 near_depth, float32 far_depth);
+static mat4 perspective_off_center(float32 left, float32 right, float32 bottom, float32 top, float32 near_depth, float32 far_depth);
+static quat conj(quat q);
+static quat normalize4(quat q);
+static quat mul10(quat l, quat r);
+static mat4 quat2matrix(quat q);
+static vec2 right(Transform2D t);
+static vec2 up(Transform2D t);
+static vec2 local2world1(Transform2D t, vec2 p);
+static vec2 local2world2(Transform2D t, float32 x, float32 y);
+static vec2 world2local1(Transform2D t, vec2 p);
+static vec2 world2local2(Transform2D t, float32 x, float32 y);
 static Image load_bitmap(char* filename);
 
 // Declarations
@@ -1016,7 +1113,7 @@ static uint32 debug_lines_vao;
 static uint32 debug_lines_vbo;
 static vertex* debug_lines_vertices;
 static Shader shader;
-static Transform camera;
+static Transform2D camera;
 static VoxelGrid voxelGrid;
 static float32 voxel_edit_radius = 1/*constant*/;
 static DrawBuffers voxelMesh_circle;
@@ -1562,6 +1659,9 @@ static proc_glViewportIndexedfv glViewportIndexedfv = 0/*constant*/;
 static proc_glWaitSync glWaitSync = 0/*constant*/;
 static char num_str[20];
 static GLFWwindow* main_window;
+static float32 main_window_width = 1600/*constant*/;
+static float32 main_window_height = 900/*constant*/;
+static float32 main_window_aspect;
 static Shader immediate_shader;
 static DrawBuffers immediate_buffer;
 static Texture2D text_atlas;
@@ -1579,7 +1679,7 @@ static void applyCamera() {
     glUniform2f(glGetUniformLocation(shader.gl_handle, "cam_pos"), camera.pos.x, camera.pos.y);
     glUniform1f(glGetUniformLocation(shader.gl_handle, "cam_rot"), camera.rot);
 }
-static void applyTransform(Transform t) {
+static void applyTransform(Transform2D t) {
     glUniform2f(glGetUniformLocation(shader.gl_handle, "entity_pos"), t.pos.x, t.pos.y);
     glUniform1f(glGetUniformLocation(shader.gl_handle, "entity_rot"), t.rot);
     glUniform1f(glGetUniformLocation(shader.gl_handle, "entity_scale"), t.scale);
@@ -1601,47 +1701,17 @@ static vec2 rotate_vec(vec2 dir, float32 angle) {
     res.y = ((-s * dir.x) + (c * dir.y));
     return res;
 }
-static vec2 right(Transform t) {
-    return vec(cosf(t.rot), sinf(t.rot));
-}
-static vec2 up(Transform t) {
-    return vec(-sinf(t.rot), cosf(t.rot));
-}
-static vec2 local2world1(Transform t, vec2 p) {
-    return local2world2(t, p.x, p.y);
-}
-static vec2 local2world2(Transform t, float32 x, float32 y) {
-    float32 c = (cosf(t.rot) * t.scale)/*not constant*/;
-    float32 s = (sinf(t.rot) * t.scale)/*not constant*/;
-    vec2 res;
-    res.x = (((c * x) + (s * y)) + t.pos.x);
-    res.y = (((-s * x) + (c * y)) + t.pos.y);
-    return res;
-}
-static vec2 world2local1(Transform t, vec2 p) {
-    return world2local2(t, p.x, p.y);
-}
-static vec2 world2local2(Transform t, float32 x, float32 y) {
-    float32 c = (cosf(t.rot) / t.scale)/*not constant*/;
-    float32 s = (sinf(t.rot) / t.scale)/*not constant*/;
-    float32 px = (x - t.pos.x)/*not constant*/;
-    float32 py = (y - t.pos.y)/*not constant*/;
-    vec2 res;
-    res.x = ((c * px) - (s * py));
-    res.y = ((c * py) + (s * px));
-    return res;
-}
 static Entity* appendEntity(DrawBuffers db) {
     if (entitiesLength >= 256) {
         printf("%s", "Failed to append entity. Max limit reached.");
         return 0;
     }
     Entity* res = &entities[entitiesLength++]/*not constant*/;
-    res->transform.pos = vec(0, 0);
+    res->transform.pos = make_vec1(0, 0);
     res->transform.scale = 1;
     res->transform.rot = 0;
     res->db = db;
-    res->vel = vec(0, 0);
+    res->vel = make_vec1(0, 0);
     return res;
 }
 static DrawBuffers genCircle(int32 res, float32 radius) {
@@ -1686,27 +1756,27 @@ static void drawPlanet(Planet* planet) {
     draw_elements1(planet->db);
 }
 static void updateEntity(Entity* entity) {
-    entity->transform.pos = add(entity->transform.pos, entity->vel);
+    entity->transform.pos = add1(entity->transform.pos, entity->vel);
     for (int32 i = 0; i < 16; i++) {
         Planet* planet = &planets[i]/*not constant*/;
-        vec2 diff = sub(entity->transform.pos, planet->pos)/*not constant*/;
-        vec2 normal = normalize(diff)/*not constant*/;
-        float32 intersection = (length(diff) - planet->radius)/*not constant*/;
+        vec2 diff = sub1(entity->transform.pos, planet->pos)/*not constant*/;
+        vec2 normal = normalize1(diff)/*not constant*/;
+        float32 intersection = (length1(diff) - planet->radius)/*not constant*/;
         float32 planetArea = ((3.141593 * planet->radius) * planet->radius)/*not constant*/;
         float32 planetMass = planetArea/*not constant*/;
-        vec2 gravity = mul2(normal, ((planetMass / sqlength(diff)) * -0.000003))/*not constant*/;
+        vec2 gravity = mul2(normal, ((planetMass / sqlength1(diff)) * -0.000003))/*not constant*/;
         if (intersection <= 0.000000) {
             vec2 correction = mul2(normal, -intersection)/*not constant*/;
-            entity->transform.pos = add(entity->transform.pos, correction);
-            entity->vel = add(entity->vel, mul2(normal, -dot(entity->vel, normal)));
+            entity->transform.pos = add1(entity->transform.pos, correction);
+            entity->vel = add1(entity->vel, mul2(normal, -dot1(entity->vel, normal)));
         }
     }
     Intersection intersection;
     if (point_intersects(entity->transform.pos, &voxelGrid, &intersection)) {
         vec2 normal = intersection.surface_normal/*not constant*/;
         vec2 correction = mul2(normal, -intersection.distance)/*not constant*/;
-        entity->transform.pos = add(entity->transform.pos, correction);
-        entity->vel = add(entity->vel, mul2(normal, -dot(entity->vel, normal)));
+        entity->transform.pos = add1(entity->transform.pos, correction);
+        entity->vel = add1(entity->vel, mul2(normal, -dot1(entity->vel, normal)));
     }
 }
 static vec2 getMouseWorldCoord() {
@@ -1754,11 +1824,14 @@ static void load() {
         image.width = 64;
         image.height = 64;
         image.pixels = malloc(((sizeof(Color) * 64) * 64));
-        for (int32 i = 0; i < (64 * 64); i++) {
-            float32 v = ((random(i) + 1.000000) / 2.000000)/*not constant*/;
-            if (v < 0) printf("%s%f%s", "v: ", v, "\n");
-            uint8 c = (uint8)(v * 255)/*not constant*/;
-            image.pixels[i] = (Color) {c, c, c, 255};
+        for (int32 x = 0; x < 64; x++) {
+            for (int32 y = 0; y < 64; y++) {
+                float32 d = 10.000000/*constant*/;
+                float32 g = gnoise((x / d), (y / d))/*not constant*/;
+                float32 v = ((g + 1.000000) / 2.000000)/*not constant*/;
+                uint8 c = (uint8)(v * 255)/*not constant*/;
+                image.pixels[((x * 64) + y)] = (Color) {c, c, c, 255};
+            }
         }
         random_texture = create_texture2D(image);
         set_filter(random_texture, 9728);
@@ -1776,7 +1849,7 @@ static void load() {
     }
     player = appendEntity(genCircle(4, 0.100000));
     voxelGrid = generatePlanet();
-    voxelGrid.transform.pos = vec(-20, 30);
+    voxelGrid.transform.pos = make_vec1(-20, 30);
     voxelMesh_circle = genCircle(360, 1);
 }
 static VoxelGrid generatePlanet() {
@@ -1788,21 +1861,29 @@ static VoxelGrid generatePlanet() {
             float32 xf = ((float32)x - half)/*not constant*/;
             float32 yf = ((float32)y - half)/*not constant*/;
             float32 len = sqrtf(((xf * xf) + (yf * yf)))/*not constant*/;
+            /* local constant */
+            float32 h = ((gnoise((100 + ((xf / len) * 4.000000)), (100 + ((yf / len) * 4.000000))) + 1.000000) / 2.000000)/*not constant*/;
+            h *= 10;
+            h += 30;
             uint32 i = ((x * grid.res) + y)/*not constant*/;
-            grid.data[i] = clamp2((40 - len), 0, 1);
+            grid.data[i] = clamp2((h - len), 0, 1);
         }
     }
     updateGridMesh(&grid);
     return grid;
 }
-static int32 is_nan1(float32 x) {
-    return (x != x);
-}
-static int32 is_nan2(vec2 v) {
-    return (is_nan1(v.x) || is_nan1(v.y));
+static void on_key_input(GLFWwindow* window, int32 key, int32 scancode, int32 action, int32 mods) {
+    if (action == 1) {
+        switch (key) {
+            case 300:
+            toggle_fullscreen(main_window);
+            break;
+        }
+    }
 }
 int32 main() {
     grax_init();
+    glfwSetKeyCallback(main_window, on_key_input);
     load();
     glClearColor(0.050000, 0.050000, 0.050000, 1.000000);
     glLineWidth(10);
@@ -1822,8 +1903,8 @@ int32 main() {
         }
         float32 c = cosf(player->transform.rot)/*not constant*/;
         float32 s = sinf(player->transform.rot)/*not constant*/;
-        vec2 dir = vec(dot(vec(c, s), wasd), dot(vec(-s, c), wasd))/*not constant*/;
-        player->vel = add(player->vel, mul2(dir, 0.010000));
+        vec2 dir = make_vec1(dot1(make_vec1(c, s), wasd), dot1(make_vec1(-s, c), wasd))/*not constant*/;
+        player->vel = add1(player->vel, mul2(dir, 0.010000));
         float32 time = (float32)glfwGetTime()/*not constant*/;
         time = 0.000000;
         for (int32 i = 0; i < 16; i++) {
@@ -1868,10 +1949,6 @@ int32 main() {
             draw_elements1(voxelGrid.db);
             glBindVertexArray(voxelGrid.db.vao);
             glDrawArrays(0, 0, (int32)voxelGrid.numVerts);
-            glBindBuffer(34963, voxelGrid.inds_outline_ebo);
-            glDrawElements(1, list_length(voxelGrid.inds_outline), 5125, 0);
-            glBindBuffer(34963, voxelGrid.db.ebo);
-            glBindVertexArray(0);
         }
     }
 }
@@ -1889,7 +1966,7 @@ static uint32 getIndex(uint32 res, uint32 x, uint32 y) {
 }
 static VoxelGrid createVoxelGrid(uint32 res) {
     VoxelGrid grid;
-    grid.transform.pos = vec(0, 0);
+    grid.transform.pos = make_vec1(0, 0);
     grid.transform.rot = 0;
     grid.res = res;
     grid.data = malloc(sizeof(float32) * (res * res));
@@ -2122,7 +2199,7 @@ static void VoxelGrid_removeCircle(VoxelGrid* grid, float32 radius, float32 x, f
     }
 }
 static vec2 calcCenterOfMass(VoxelGrid* grid) {
-    vec2 res = vec(0, 0)/*not constant*/;
+    vec2 res = make_vec1(0, 0)/*not constant*/;
     float32 total = 0/*constant*/;
     uint32 x = -1/*constant*/;
     while (++x < grid->res) {
@@ -2132,7 +2209,7 @@ static vec2 calcCenterOfMass(VoxelGrid* grid) {
             float32 value = grid->data[i]/*not constant*/;
             if (value > 0.001000) {
                 total += value;
-                res = add(res, mul2(vec(x, y), value));
+                res = add1(res, mul2(make_vec1(x, y), value));
             }
         }
     }
@@ -2140,15 +2217,15 @@ static vec2 calcCenterOfMass(VoxelGrid* grid) {
     return res;
 }
 static vec2 rot90deg(vec2 v) {
-    vec2 res = vec(-v.y, v.x)/*not constant*/;
+    vec2 res = make_vec1(-v.y, v.x)/*not constant*/;
     return res;
 }
 static int32 ray_lineseg_intersects(Ray ray, Lineseg seg, Intersection* out_intersection) {
-    vec2 A = sub(seg.start, ray.origin)/*not constant*/;
-    vec2 B = sub(seg.end, ray.origin)/*not constant*/;
+    vec2 A = sub1(seg.start, ray.origin)/*not constant*/;
+    vec2 B = sub1(seg.end, ray.origin)/*not constant*/;
     vec2 tangent = rot90deg(ray.dir)/*not constant*/;
-    float32 d1 = dot(A, tangent)/*not constant*/;
-    float32 d2 = dot(B, tangent)/*not constant*/;
+    float32 d1 = dot1(A, tangent)/*not constant*/;
+    float32 d2 = dot1(B, tangent)/*not constant*/;
     return 0;
 }
 static int32 point_intersects(vec2 point, VoxelGrid* grid, Intersection* out_intersection) {
@@ -2175,52 +2252,52 @@ static int32 point_intersects(vec2 point, VoxelGrid* grid, Intersection* out_int
     vec2 b;
     switch (mask) {
         case 8:
-        a = vec(p1, 1);
-        b = vec(0, (1 - p1));
+        a = make_vec1(p1, 1);
+        b = make_vec1(0, (1 - p1));
         break;
         case 4:
-        a = vec(1, (1 - p2));
-        b = vec((1 - p2), 1);
+        a = make_vec1(1, (1 - p2));
+        b = make_vec1((1 - p2), 1);
         break;
         case 1:
-        a = vec((1 - p4), 0);
-        b = vec(1, p4);
+        a = make_vec1((1 - p4), 0);
+        b = make_vec1(1, p4);
         break;
         case 2:
-        a = vec(0, p3);
-        b = vec(p3, 0);
+        a = make_vec1(0, p3);
+        b = make_vec1(p3, 0);
         break;
         case (15 & ~8):
-        a = vec(0, p3);
-        b = vec((1 - p2), 1);
+        a = make_vec1(0, p3);
+        b = make_vec1((1 - p2), 1);
         break;
         case (15 & ~4):
-        a = vec(p1, 1);
-        b = vec(1, p4);
+        a = make_vec1(p1, 1);
+        b = make_vec1(1, p4);
         break;
         case (15 & ~1):
-        a = vec(1, (1 - p2));
-        b = vec(p3, 0);
+        a = make_vec1(1, (1 - p2));
+        b = make_vec1(p3, 0);
         break;
         case (15 & ~2):
-        a = vec((1 - p4), 0);
-        b = vec(0, (1 - p1));
+        a = make_vec1((1 - p4), 0);
+        b = make_vec1(0, (1 - p1));
         break;
         case (8 | 4):
-        a = vec(1, (1 - p2));
-        b = vec(0, (1 - p1));
+        a = make_vec1(1, (1 - p2));
+        b = make_vec1(0, (1 - p1));
         break;
         case (2 | 1):
-        a = vec(0, p3);
-        b = vec(1, p4);
+        a = make_vec1(0, p3);
+        b = make_vec1(1, p4);
         break;
         case (8 | 2):
-        a = vec(p1, 1);
-        b = vec(p3, 0);
+        a = make_vec1(p1, 1);
+        b = make_vec1(p3, 0);
         break;
         case (4 | 1):
-        a = vec((1 - p4), 0);
-        b = vec((1 - p2), 1);
+        a = make_vec1((1 - p4), 0);
+        b = make_vec1((1 - p2), 1);
         break;
         case 15:
         return 1;
@@ -2229,10 +2306,11 @@ static int32 point_intersects(vec2 point, VoxelGrid* grid, Intersection* out_int
         default:
         return 0;
     }
-    vec2 local = sub(point, vec(x, y))/*not constant*/;
-    local = sub(local, a);
-    vec2 normal = rot90deg(sub(b, a))/*not constant*/;
-    out_intersection->distance = dot(normal, local);
+    vec2 local = sub1(point, make_vec1(x, y))/*not constant*/;
+    local = sub1(local, a);
+    vec2 normal = rot90deg(sub1(b, a))/*not constant*/;
+    normal = normalize1(normal);
+    out_intersection->distance = dot1(normal, local);
     out_intersection->surface_normal = rotate_vec(normal, grid->transform.rot);
     if (out_intersection->distance <= 0) return 1;
     return 0;
@@ -2912,6 +2990,12 @@ static void sb_remove(StringBuilder* sb, int32 loc, uint32 num_chars) {
 static void sb_clear(StringBuilder* sb) {
     sb->length = 0;
 }
+static vec2 window_size() {
+    int32 w;
+    int32 h;
+    glfwGetWindowSize(main_window, &w, &h);
+    return (vec2){w, h};
+}
 static int32 key1(char c) {
     return glfwGetKey(main_window, (int32)c);
 }
@@ -2933,19 +3017,13 @@ static int32 grax_loop() {
     glClear(16384);
     return 1;
 }
-static void on_resize(GLFWwindow* main_window, int32 w, int32 h) {
-    printf("%s%d%s%d%s", "resize: ", w, ", ", h, "\n");
-    float32 aspect = ((float32)h / (float32)w)/*not constant*/;
-    GLint aspect_loc = glGetUniformLocation(immediate_shader.gl_handle, "aspect")/*not constant*/;
-    glUniform1f(aspect_loc, aspect);
-    glViewport(0, 0, w, h);
-}
 static void grax_init() {
     if (!glfwInit()) {
         printf("%s", "ERROR: failed to initilize glfw.\n");
         return;
     }
-    main_window = glfwCreateWindow(1600, 900, "Grax", 0, 0);
+    main_window = glfwCreateWindow((int32)main_window_width, (int32)main_window_height, "Grax", 0, 0);
+    main_window_aspect = (main_window_height / main_window_width);
     if (!main_window) {
         glfwTerminate();
         printf("%s", "ERROR: failed to initilize main_window.\n");
@@ -2977,6 +3055,15 @@ static void grax_init() {
     text_atlas = create_texture2D(image);
     free(image.pixels);
 }
+static void on_resize(GLFWwindow* window, int32 w, int32 h) {
+    main_window_width = (float32)w;
+    main_window_height = (float32)h;
+    main_window_aspect = (main_window_height / main_window_width);
+    printf("%s%f%s%f%s%f%s", "Main Window Resize:\n    width = ", main_window_width, "\n    height = ", main_window_height, "\n    aspect = ", main_window_aspect, "\n");
+    GLint aspect_loc = glGetUniformLocation(immediate_shader.gl_handle, "aspect")/*not constant*/;
+    glUniform1f(aspect_loc, main_window_aspect);
+    glViewport(0, 0, w, h);
+}
 static void opengl_debug_callback(GLenum source, GLenum _type, GLuint id, GLenum severity, GLsizei length, GLchar* message, void* userParam) {
     switch (_type) {
         case 33356:
@@ -3001,6 +3088,44 @@ static void opengl_debug_callback(GLenum source, GLenum _type, GLuint id, GLenum
         break;
     }
     printf("%s%s", message, "\n");
+}
+static GLFWmonitor* get_ideal_monitor() {
+    int32 x;
+    int32 y;
+    int32 w;
+    int32 h;
+    glfwGetWindowPos(main_window, &x, &y);
+    glfwGetWindowSize(main_window, &w, &h);
+    int32 monitor_count;
+    GLFWmonitor** monitors = glfwGetMonitors(&monitor_count)/*not constant*/;
+    int32 ideal = 0/*constant*/;
+    int32 highest_area = 0/*constant*/;
+    for (int32 i = 0; i < monitor_count; i++) {
+        GLFWmonitor* m = monitors[i]/*not constant*/;
+        int32 mX;
+        int32 mY;
+        glfwGetMonitorPos(m, &mX, &mY);
+        GLFWvidmode* mode = glfwGetVideoMode(m)/*not constant*/;
+        int32 area = (max(0, (min((x + w), (mX + mode->width)) - max(x, mX))) * max(0, (min((y + h), (mY + mode->height)) - max(y, mY))))/*not constant*/;
+        if (area > highest_area) {
+            highest_area = area;
+            ideal = i;
+        }
+    }
+    return monitors[ideal];
+}
+static void toggle_fullscreen(GLFWwindow* window) {
+    GLFWmonitor* monitor = glfwGetWindowMonitor(window)/*not constant*/;
+    if (monitor) {
+        int32 mX;
+        int32 mY;
+        glfwGetMonitorPos(monitor, &mX, &mY);
+        glfwSetWindowMonitor(window, 0, (mX + 60), (mY + 60), 1600, 900, 0);
+    } else {
+        GLFWmonitor* m = get_ideal_monitor()/*not constant*/;
+        GLFWvidmode* mode = glfwGetVideoMode(m)/*not constant*/;
+        glfwSetWindowMonitor(window, m, 0, 0, mode->width, mode->height, mode->refreshRate);
+    }
 }
 static uint32 makeshader(uint32 program, GLenum _type, char* code) {
     uint32 s = glCreateShader(_type)/*not constant*/;
@@ -3239,6 +3364,37 @@ static float32 random(int32 seed) {
     seed = ((seed << 13) ^ seed);
     return (1.000000 - ((((seed * (((seed * seed) * 15731) + 789221)) + 1376312589) & 2147483647) / 1073741824.000000));
 }
+static vec2 random_vec2(float32 x, float32 y) {
+    vec2 v;
+    v.x = ((x * 127.100000) + (y * 311.700000));
+    v.y = ((x * 268.500000) + (y * 183.300000));
+    v.x = ((fract((sinf(v.x) * 43758.545312)) * 2.000000) - 1.000000);
+    v.y = ((fract((sinf(v.y) * 43758.545312)) * 2.000000) - 1.000000);
+    return v;
+}
+static float32 gnoise(float32 x, float32 y) {
+    float32 ix = floorf(x)/*not constant*/;
+    float32 iy = floorf(y)/*not constant*/;
+    float32 fx = fract(x)/*not constant*/;
+    float32 fy = fract(y)/*not constant*/;
+    float32 ux = ((fx * fx) * ((-fx * 2.000000) + 3.000000))/*not constant*/;
+    float32 uy = ((fy * fy) * ((-fy * 2.000000) + 3.000000))/*not constant*/;
+    vec2 r = random_vec2(ix, iy)/*not constant*/;
+    float32 d1 = ((r.x * fx) + (r.y * fy))/*not constant*/;
+    r = random_vec2((ix + 1.000000), iy);
+    float32 d2 = ((r.x * (fx - 1.000000)) + (r.y * fy))/*not constant*/;
+    r = random_vec2(ix, (iy + 1.000000));
+    float32 d3 = ((r.x * fx) + (r.y * (fy - 1.000000)))/*not constant*/;
+    r = random_vec2((ix + 1.000000), (iy + 1.000000));
+    float32 d4 = ((r.x * (fx - 1.000000)) + (r.y * (fy - 1.000000)))/*not constant*/;
+    return lerp1(uy, lerp1(ux, d1, d2), lerp1(ux, d3, d4));
+}
+static int32 min(int32 a, int32 b) {
+    return (a < b) ? a : b;
+}
+static int32 max(int32 a, int32 b) {
+    return (a < b) ? b : a;
+}
 static int32 clamp1(int32 t, int32 min, int32 max) {
     return (t < min) ? min : (t > max) ? max : t;
 }
@@ -3251,44 +3407,242 @@ static float32 lerp1(float32 t, float32 a, float32 b) {
 static int32 round2int(float32 x) {
     return (int32)(x + 0.500000);
 }
-static vec2 vec(float32 x, float32 y) {
-    vec2 res;
-    res.x = x;
-    res.y = y;
-    return res;
+static float32 fract(float32 x) {
+    return (x - floorf(x));
 }
-static vec2 sub(vec2 a, vec2 b) {
-    return vec((a.x - b.x), (a.y - b.y));
+static int32 is_nan1(float32 x) {
+    return (x != x);
 }
-static vec2 add(vec2 a, vec2 b) {
-    return vec((a.x + b.x), (a.y + b.y));
+static int32 is_nan2(vec2 v) {
+    return (is_nan1(v.x) || is_nan1(v.y));
+}
+static vec2 make_vec1(float32 x, float32 y) {
+    return (vec2) {x, y};
+}
+static vec3 make_vec2(float32 x, float32 y, float32 z) {
+    return (vec3) {x, y, z};
+}
+static vec4 make_vec3(float32 x, float32 y, float32 z, float32 w) {
+    return (vec4) {x, y, z, w};
+}
+static vec2 sub1(vec2 a, vec2 b) {
+    return make_vec1((a.x - b.x), (a.y - b.y));
+}
+static vec2 add1(vec2 a, vec2 b) {
+    return make_vec1((a.x + b.x), (a.y + b.y));
 }
 static vec2 mul1(vec2 a, vec2 b) {
-    return vec((a.x * b.x), (a.y * b.y));
+    return make_vec1((a.x * b.x), (a.y * b.y));
 }
 static vec2 mul2(vec2 a, float32 s) {
-    return vec((a.x * s), (a.y * s));
+    return make_vec1((a.x * s), (a.y * s));
 }
-static vec2 neg(vec2 a) {
-    return vec(-a.x, -a.y);
+static vec2 neg1(vec2 a) {
+    return make_vec1(-a.x, -a.y);
 }
-static float32 dot(vec2 a, vec2 b) {
+static vec3 sub2(vec3 a, vec3 b) {
+    return make_vec2((a.x - b.x), (a.y - b.y), (a.z - b.z));
+}
+static vec3 add2(vec3 a, vec3 b) {
+    return make_vec2((a.x + b.x), (a.y + b.y), (a.z + b.z));
+}
+static vec3 mul3(vec3 a, vec3 b) {
+    return make_vec2((a.x * b.x), (a.y * b.y), (a.z * b.z));
+}
+static vec3 mul4(vec3 a, float32 s) {
+    return make_vec2((a.x * s), (a.y * s), (a.z * s));
+}
+static vec3 neg2(vec3 a) {
+    return make_vec2(-a.x, -a.y, -a.z);
+}
+static vec4 sub3(vec4 a, vec4 b) {
+    return make_vec3((a.x - b.x), (a.y - b.y), (a.z - b.z), (a.w - b.w));
+}
+static vec4 add3(vec4 a, vec4 b) {
+    return make_vec3((a.x + b.x), (a.y + b.y), (a.z + b.z), (a.w + b.w));
+}
+static vec4 mul5(vec4 a, vec4 b) {
+    return make_vec3((a.x * b.x), (a.y * b.y), (a.z * b.z), (a.w * b.w));
+}
+static vec4 mul6(vec4 a, float32 s) {
+    return make_vec3((a.x * s), (a.y * s), (a.z * s), (a.w * s));
+}
+static vec4 neg3(vec4 a) {
+    return make_vec3(-a.x, -a.y, -a.z, -a.w);
+}
+static float32 dot1(vec2 a, vec2 b) {
     return ((a.x * b.x) + (a.y * b.y));
 }
-static float32 sqlength(vec2 a) {
-    return dot(a, a);
+static float32 sqlength1(vec2 a) {
+    return dot1(a, a);
 }
-static float32 length(vec2 a) {
-    return sqrtf(dot(a, a));
+static float32 length1(vec2 a) {
+    return sqrtf(dot1(a, a));
 }
-static vec2 normalize(vec2 a) {
-    return mul2(a, (1.000000 / length(a)));
+static vec2 normalize1(vec2 a) {
+    return mul2(a, (1.000000 / length1(a)));
 }
-static vec2 reflect(vec2 a, vec2 normal) {
-    return add(a, mul2(normal, (dot(a, normal) * -2.000000)));
+static vec2 reflect1(vec2 a, vec2 normal) {
+    return add1(a, mul2(normal, (dot1(a, normal) * -2.000000)));
 }
 static vec2 lerp2(float32 t, vec2 a, vec2 b) {
-    return add(a, mul2(sub(b, a), t));
+    return add1(a, mul2(sub1(b, a), t));
+}
+static float32 dot2(vec3 a, vec3 b) {
+    return (((a.x * b.x) + (a.y * b.y)) + (a.z * b.z));
+}
+static float32 sqlength2(vec3 a) {
+    return dot2(a, a);
+}
+static float32 length2(vec3 a) {
+    return sqrtf(dot2(a, a));
+}
+static vec3 normalize2(vec3 a) {
+    return mul4(a, (1.000000 / length2(a)));
+}
+static vec3 reflect2(vec3 a, vec3 normal) {
+    return add2(a, mul4(normal, (dot2(a, normal) * -2.000000)));
+}
+static vec3 lerp3(float32 t, vec3 a, vec3 b) {
+    return add2(a, mul4(sub2(b, a), t));
+}
+static vec3 cross(vec3 a, vec3 b) {
+    return (vec3) {((a.y * b.z) - (a.z * b.y)), ((a.z * b.x) - (a.x * b.z)), ((a.x * b.y) - (a.y * b.x))};
+}
+static float32 dot3(vec4 a, vec4 b) {
+    return ((((a.x * b.x) + (a.y * b.y)) + (a.z * b.z)) + (a.w * b.w));
+}
+static float32 sqlength3(vec4 a) {
+    return dot3(a, a);
+}
+static float32 length3(vec4 a) {
+    return sqrtf(dot3(a, a));
+}
+static vec4 normalize3(vec4 a) {
+    return mul6(a, (1.000000 / length3(a)));
+}
+static vec4 reflect3(vec4 a, vec4 normal) {
+    return add3(a, mul6(normal, (dot3(a, normal) * -2.000000)));
+}
+static vec4 lerp4(float32 t, vec4 a, vec4 b) {
+    return add3(a, mul6(sub3(b, a), t));
+}
+static vec4 col1(mat4 m) {
+    return (vec4) {m.row1.x, m.row2.x, m.row3.x, m.row4.x};
+}
+static vec4 col2(mat4 m) {
+    return (vec4) {m.row1.y, m.row2.y, m.row3.y, m.row4.y};
+}
+static vec4 col3(mat4 m) {
+    return (vec4) {m.row1.z, m.row2.z, m.row3.z, m.row4.z};
+}
+static vec4 col4(mat4 m) {
+    return (vec4) {m.row1.w, m.row2.w, m.row3.w, m.row4.w};
+}
+static mat4 transpose(mat4 m) {
+    return (mat4) {col1(m), col2(m), col3(m), col4(m)};
+}
+static mat4 mul7(mat4 a, mat4 b) {
+    mat4 res;
+    res.row1.x = dot3(a.row1, col1(b));
+    res.row1.y = dot3(a.row1, col2(b));
+    res.row1.z = dot3(a.row1, col3(b));
+    res.row1.w = dot3(a.row1, col4(b));
+    res.row2.x = dot3(a.row2, col1(b));
+    res.row2.y = dot3(a.row2, col2(b));
+    res.row2.z = dot3(a.row2, col3(b));
+    res.row2.w = dot3(a.row2, col4(b));
+    res.row3.x = dot3(a.row3, col1(b));
+    res.row3.y = dot3(a.row3, col2(b));
+    res.row3.z = dot3(a.row3, col3(b));
+    res.row3.w = dot3(a.row3, col4(b));
+    res.row4.x = dot3(a.row4, col1(b));
+    res.row4.y = dot3(a.row4, col2(b));
+    res.row4.z = dot3(a.row4, col3(b));
+    res.row4.w = dot3(a.row4, col4(b));
+    return res;
+}
+static vec4 mul8(mat4 m, vec4 v) {
+    return (vec4) {dot3(m.row1, v), dot3(m.row2, v), dot3(m.row3, v), dot3(m.row4, v)};
+}
+static vec4 mul9(vec4 v, mat4 m) {
+    return (vec4) {dot3(v, col1(m)), dot3(v, col2(m)), dot3(v, col3(m)), dot3(v, col4(m))};
+}
+static mat4 perspective(float32 fovy, float32 aspect, float32 near_depth, float32 far_depth) {
+    float32 maxY = (near_depth * tanf((0.500000 * fovy)))/*not constant*/;
+    float32 minY = -maxY/*not constant*/;
+    float32 minX = (minY * aspect)/*not constant*/;
+    float32 maxX = (maxY * aspect)/*not constant*/;
+    return perspective_off_center(minX, maxX, minY, maxY, near_depth, far_depth);
+}
+static mat4 perspective_off_center(float32 left, float32 right, float32 bottom, float32 top, float32 near_depth, float32 far_depth) {
+    float32 x = ((2.000000 * near_depth) / (right - left))/*not constant*/;
+    float32 y = ((2.000000 * near_depth) / (top - bottom))/*not constant*/;
+    float32 a = ((right + left) / (right - left))/*not constant*/;
+    float32 b = ((top + bottom) / (top - bottom))/*not constant*/;
+    float32 c = (-(far_depth + near_depth) / (far_depth - near_depth))/*not constant*/;
+    float32 d = (-((2.000000 * far_depth) * near_depth) / (far_depth - near_depth))/*not constant*/;
+    return (mat4) {{x, 0, 0, 0}, {0, y, 0, 0}, {a, b, c, -1}, {0, 0, d, 0}};
+}
+static quat conj(quat q) {
+    return (quat) {-q.x, -q.y, -q.z, q.w};
+}
+static quat normalize4(quat q) {
+    float32 l = sqrtf(((((q.x * q.x) + (q.y * q.y)) + (q.z * q.z)) + (q.w * q.w)))/*not constant*/;
+    return (quat) {(q.x / l), (q.y / l), (q.z / l), (q.w / l)};
+}
+static quat mul10(quat l, quat r) {
+    float32 a = l.w/*not constant*/;
+    float32 b = l.x/*not constant*/;
+    float32 c = l.y/*not constant*/;
+    float32 d = l.z/*not constant*/;
+    float32 e = r.w/*not constant*/;
+    float32 f = r.x/*not constant*/;
+    float32 g = r.y/*not constant*/;
+    float32 h = r.z/*not constant*/;
+    return (quat) {((((b * e) + (a * f)) + (c * h)) - (d * g)), ((((a * g) - (b * h)) + (c * e)) + (d * f)), ((((a * h) + (b * g)) - (c * f)) + (d * e)), ((((a * e) - (b * f)) - (c * g)) - (d * h))};
+}
+static mat4 quat2matrix(quat q) {
+    float32 xx = (q.x * q.x)/*not constant*/;
+    float32 xy = (q.x * q.y)/*not constant*/;
+    float32 xz = (q.x * q.z)/*not constant*/;
+    float32 xw = (q.x * q.w)/*not constant*/;
+    float32 yy = (q.y * q.y)/*not constant*/;
+    float32 yz = (q.y * q.z)/*not constant*/;
+    float32 yw = (q.y * q.w)/*not constant*/;
+    float32 zz = (q.z * q.z)/*not constant*/;
+    float32 zw = (q.z * q.w)/*not constant*/;
+    return (mat4) {(1.000000 - ((yy + zz) * 2.000000)), ((xy - zw) * 2.000000), ((xz + yw) * 2.000000), 0, ((xy + zw) * 2.000000), (1.000000 - ((xx + zz) * 2.000000)), ((yz - xw) * 2.000000), 0, ((xz - yw) * 2.000000), ((yz + xw) * 2.000000), (1.000000 - ((xx + yy) * 2.000000)), 0, 0, 0, 0, 1};
+}
+static vec2 right(Transform2D t) {
+    return make_vec1(cosf(t.rot), sinf(t.rot));
+}
+static vec2 up(Transform2D t) {
+    return make_vec1(-sinf(t.rot), cosf(t.rot));
+}
+static vec2 local2world1(Transform2D t, vec2 p) {
+    return local2world2(t, p.x, p.y);
+}
+static vec2 local2world2(Transform2D t, float32 x, float32 y) {
+    float32 c = (cosf(t.rot) * t.scale)/*not constant*/;
+    float32 s = (sinf(t.rot) * t.scale)/*not constant*/;
+    vec2 res;
+    res.x = (((c * x) + (s * y)) + t.pos.x);
+    res.y = (((-s * x) + (c * y)) + t.pos.y);
+    return res;
+}
+static vec2 world2local1(Transform2D t, vec2 p) {
+    return world2local2(t, p.x, p.y);
+}
+static vec2 world2local2(Transform2D t, float32 x, float32 y) {
+    float32 c = (cosf(t.rot) / t.scale)/*not constant*/;
+    float32 s = (sinf(t.rot) / t.scale)/*not constant*/;
+    float32 px = (x - t.pos.x)/*not constant*/;
+    float32 py = (y - t.pos.y)/*not constant*/;
+    vec2 res;
+    res.x = ((c * px) - (s * py));
+    res.y = ((c * py) + (s * px));
+    return res;
 }
 static Image load_bitmap(char* filename) {
     typedef struct Header {
