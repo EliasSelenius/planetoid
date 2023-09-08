@@ -51,8 +51,8 @@ VoxelGrid createVoxelGrid(uint32 res) {
 
     float32 half = grid.res as float32 / 2.0;
 
-    for uint32 x in 0 .. grid.res {
-        for uint32 y in 0 .. grid.res {
+    for uint32 x : 0 .. grid.res {
+        for uint32 y : 0 .. grid.res {
             let i = getIndex(grid.res, x, y);
             grid.verts[i].x = x as float32 - half;
             grid.verts[i].y = y as float32 - half;
@@ -78,8 +78,8 @@ void updateGridMesh(VoxelGrid* grid) {
     let g1_byteoffset = grid.res * grid.res;
     let g2_byteoffset = g1_byteoffset + grid.res * size;
 
-    for uint32 x in 0 .. size {
-        for uint32 y in 0 .. size {
+    for uint32 x : 0 .. size {
+        for uint32 y : 0 .. size {
 
             /*
                 *--------1--------*
@@ -223,8 +223,8 @@ void updateGridMesh(VoxelGrid* grid) {
 
         float32 half = grid.res as float32 / 2.0;
 
-        for uint32 x in 0 .. grid.res {
-            for uint32 y in 0 .. size {
+        for uint32 x : 0 .. grid.res {
+            for uint32 y : 0 .. size {
 
                 let p1 = grid.data[getIndex(grid.res, x, y)];
                 let p2 = grid.data[getIndex(grid.res, x, y + 1)];
@@ -243,8 +243,8 @@ void updateGridMesh(VoxelGrid* grid) {
             }
         }
 
-        for uint32 x in 0 .. size {
-            for uint32 y in 0 .. grid.res {
+        for uint32 x : 0 .. size {
+            for uint32 y : 0 .. grid.res {
 
                 let p1 = grid.data[getIndex(grid.res, x, y)];
                 let p2 = grid.data[getIndex(grid.res, x + 1, y)];
@@ -288,8 +288,8 @@ void VoxelGrid_addCircle(VoxelGrid* grid, float32 radius, float32 x, float32 y) 
     int32 y_min = clamp(ry - iradius, 0, grid.res as int32);
     int32 y_max = clamp(ry + iradius, 0, grid.res as int32);
 
-    for ix in x_min .. x_max {
-        for iy in y_min .. y_max {
+    for ix : x_min .. x_max {
+        for iy : y_min .. y_max {
             float32 xf = ix as float32 - p.x;
             float32 yf = iy as float32 - p.y;
             float32 len = sqrtf(xf*xf + yf*yf);
@@ -313,8 +313,8 @@ void VoxelGrid_removeCircle(VoxelGrid* grid, float32 radius, float32 x, float32 
     int32 y_min = clamp(ry - iradius, 0, grid.res as int32);
     int32 y_max = clamp(ry + iradius, 0, grid.res as int32);
 
-    for ix in x_min .. x_max + 1 {
-        for iy in y_min .. y_max + 1 {
+    for ix : x_min .. x_max + 1 {
+        for iy : y_min .. y_max + 1 {
             float32 xf = ix as float32 - p.x;
             float32 yf = iy as float32 - p.y;
             float32 len = sqrtf(xf*xf + yf*yf);

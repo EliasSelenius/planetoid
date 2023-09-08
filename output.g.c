@@ -19,26 +19,28 @@ typedef struct VoxelGrid VoxelGrid;
 typedef struct Intersection Intersection;
 typedef struct Lineseg Lineseg;
 typedef struct Ray Ray;
+typedef struct List List;
 typedef struct GLFWvidmode GLFWvidmode;
 typedef struct GLFWgammaramp GLFWgammaramp;
 typedef struct GLFWimage GLFWimage;
 typedef struct GLFWgamepadstate GLFWgamepadstate;
 typedef struct string string;
 typedef struct StringBuilder StringBuilder;
-typedef struct Shader Shader;
 typedef struct Framebuffer Framebuffer;
 typedef struct Texture2D Texture2D;
 typedef struct Color Color;
 typedef struct ColorRgb ColorRgb;
 typedef struct DrawBuffers DrawBuffers;
 typedef struct vertex vertex;
-typedef struct List List;
+typedef struct Shader Shader;
 typedef struct vec2 vec2;
 typedef struct ivec2 ivec2;
 typedef struct vec3 vec3;
 typedef struct ivec3 ivec3;
 typedef struct vec4 vec4;
 typedef struct ivec4 ivec4;
+typedef struct mat2 mat2;
+typedef struct mat3 mat3;
 typedef struct mat4 mat4;
 typedef struct quat quat;
 typedef struct Transform Transform;
@@ -637,6 +639,11 @@ typedef void (*GLFWmonitorfun)(GLFWmonitor*, int32);
 typedef void (*GLFWjoystickfun)(int32, int32);
 
 // Structs
+typedef struct List {
+    uint32 stride;
+    uint32 capacity;
+    uint32 length;
+} List;
 typedef struct GLFWvidmode {
     int32 width;
     int32 height;
@@ -668,9 +675,6 @@ typedef struct StringBuilder {
     uint32 capacity;
     uint32 length;
 } StringBuilder;
-typedef struct Shader {
-    uint32 gl_handle;
-} Shader;
 typedef struct Framebuffer {
     uint32 width;
     uint32 height;
@@ -698,11 +702,9 @@ typedef struct DrawBuffers {
     uint32 ebo;
     int32 elements_count;
 } DrawBuffers;
-typedef struct List {
-    uint32 stride;
-    uint32 capacity;
-    uint32 length;
-} List;
+typedef struct Shader {
+    uint32 gl_handle;
+} Shader;
 typedef struct vec2 {
     float32 x;
     float32 y;
@@ -777,6 +779,10 @@ typedef struct Ray {
     vec2 origin;
     vec2 dir;
 } Ray;
+typedef struct mat2 {
+    vec2 row1;
+    vec2 row2;
+} mat2;
 typedef struct VoxelGrid {
     Transform2D transform;
     float32* data;
@@ -788,6 +794,11 @@ typedef struct VoxelGrid {
     uint32* inds;
     uint32* inds_outline;
 } VoxelGrid;
+typedef struct mat3 {
+    vec3 row1;
+    vec3 row2;
+    vec3 row3;
+} mat3;
 typedef struct Transform {
     vec3 position;
     vec3 scale;
@@ -854,6 +865,12 @@ uint64 strlen(char* str);
 static char* fileread1(char* filename);
 static char* fileread2(char* filename, char* mode);
 static void filewrite(char* filename, char* content);
+static void* list_create(uint32 stride);
+static List* list_head(void* list);
+static void list_clear(void* list);
+static void list_add(void** list, void* data);
+static uint32 list_length(void* list);
+static void list_delete(void* list);
 static void load_opengl(void (*(*getProcAddress)(char*))());
 int32 glfwInit();
 void glfwTerminate();
@@ -1002,8 +1019,6 @@ static void on_resize(GLFWwindow* window, int32 w, int32 h);
 static void opengl_debug_callback(GLenum source, GLenum _type, GLuint id, GLenum severity, GLsizei length, GLchar* message, void* userParam);
 static GLFWmonitor* get_ideal_monitor();
 static void toggle_fullscreen(GLFWwindow* window);
-static uint32 makeshader(uint32 program, GLenum _type, char* code);
-static Shader create_shader(char* fragsrc, char* vertsrc);
 static Color rgba(uint32 i);
 static Texture2D create_texture2D(Image image);
 static void bind(Texture2D tex);
@@ -1013,11 +1028,8 @@ static void update_buffers(DrawBuffers* db, vertex* vertices, uint32 vertices_co
 static void update_buffer(uint32 buffer, uint32 size, void* data);
 static void draw_elements1(DrawBuffers db);
 static void draw_elements2(DrawBuffers db, uint32 instanceCount);
-static void* list_create(uint32 stride);
-static List* list_head(void* list);
-static void list_clear(void* list);
-static void list_add(void** list, void* data);
-static uint32 list_length(void* list);
+static void use(Shader s);
+static Shader create_shader(char* fragsrc, char* vertsrc);
 static void dispatch_immediate();
 static void immediate_vertex1(float32 x, float32 y, float32 u, float32 v);
 static void immediate_vertex2(float32 x, float32 y, float32 u, float32 v, Color color);
@@ -1086,19 +1098,33 @@ static float32 length3(vec4 a);
 static vec4 normalize3(vec4 a);
 static vec4 reflect3(vec4 a, vec4 normal);
 static vec4 lerp4(float32 t, vec4 a, vec4 b);
-static vec4 col1(mat4 m);
-static vec4 col2(mat4 m);
-static vec4 col3(mat4 m);
+static vec2 col11(mat2 m);
+static vec2 col21(mat2 m);
+static mat2 transpose1(mat2 m);
+static float32 det(mat2 m);
+static mat2 mul7(mat2 a, mat2 b);
+static vec2 mul8(mat2 m, vec2 v);
+static vec2 mul9(vec2 v, mat2 m);
+static vec3 col12(mat3 m);
+static vec3 col22(mat3 m);
+static vec3 col31(mat3 m);
+static mat3 transpose2(mat3 m);
+static mat3 mul10(mat3 a, mat3 b);
+static vec3 mul11(mat3 m, vec3 v);
+static vec3 mul12(vec3 v, mat3 m);
+static vec4 col13(mat4 m);
+static vec4 col23(mat4 m);
+static vec4 col32(mat4 m);
 static vec4 col4(mat4 m);
-static mat4 transpose(mat4 m);
-static mat4 mul7(mat4 a, mat4 b);
-static vec4 mul8(mat4 m, vec4 v);
-static vec4 mul9(vec4 v, mat4 m);
+static mat4 transpose3(mat4 m);
+static mat4 mul13(mat4 a, mat4 b);
+static vec4 mul14(mat4 m, vec4 v);
+static vec4 mul15(vec4 v, mat4 m);
 static mat4 perspective(float32 fovy, float32 aspect, float32 near_depth, float32 far_depth);
 static mat4 perspective_off_center(float32 left, float32 right, float32 bottom, float32 top, float32 near_depth, float32 far_depth);
 static quat conj(quat q);
 static quat normalize4(quat q);
-static quat mul10(quat l, quat r);
+static quat mul16(quat l, quat r);
 static mat4 quat2matrix(quat q);
 static vec2 right(Transform2D t);
 static vec2 up(Transform2D t);
@@ -1885,10 +1911,14 @@ int32 main() {
     grax_init();
     glfwSetKeyCallback(main_window, on_key_input);
     load();
+    {
+        char* version = (char*)glGetString(7938)/*not constant*/;
+        printf("%s%s%s", "OpenGL version: ", version, "\n");
+    }
     glClearColor(0.050000, 0.050000, 0.050000, 1.000000);
     glLineWidth(10);
     while (grax_loop()) {
-        glUseProgram(shader.gl_handle);
+        use(shader);
         bind(random_texture);
         vec2 wasd;
         wasd.x = 0;
@@ -2341,6 +2371,37 @@ static void filewrite(char* filename, char* content) {
     }
     fwrite(content, sizeof(char), strlen(content), file);
     fclose(file);
+}
+static void* list_create(uint32 stride) {
+    List* head = malloc((sizeof(List) + (stride * 2)))/*not constant*/;
+    head->stride = stride;
+    head->capacity = 2;
+    head->length = 0;
+    return &head[1];
+}
+static List* list_head(void* list) {
+    return &((List*)list)[-1];
+}
+static void list_clear(void* list) {
+    list_head(list)->length = 0;
+}
+static void list_add(void** list, void* data) {
+    List* head = list_head(*list)/*not constant*/;
+    if (head->capacity == head->length) {
+        head->capacity *= 2;
+        head = realloc(head, (sizeof(List) + (head->capacity * head->stride)));
+        *list = &head[1];
+    }
+    uint64 dst = (uint64)*list/*not constant*/;
+    dst += (head->length * head->stride);
+    memcpy((void*)dst, data, head->stride);
+    head->length++;
+}
+static uint32 list_length(void* list) {
+    return list_head(list)->length;
+}
+static void list_delete(void* list) {
+    free(list_head(list));
 }
 static void load_opengl(void (*(*getProcAddress)(char*))()) {
     glActiveShaderProgram = (proc_glActiveShaderProgram)getProcAddress("glActiveShaderProgram");
@@ -2909,7 +2970,7 @@ static int32 string_equals(string a, string b) {
     return 1;
 }
 static int32 is_whitespace(char c) {
-    return ((c == ' ') || (c == *"\n"));
+    return ((c == ' ') || (c == '\n'));
 }
 static int32 is_upper_case_letter(char c) {
     return ((c >= 'A') && (c <= 'Z'));
@@ -3127,33 +3188,6 @@ static void toggle_fullscreen(GLFWwindow* window) {
         glfwSetWindowMonitor(window, m, 0, 0, mode->width, mode->height, mode->refreshRate);
     }
 }
-static uint32 makeshader(uint32 program, GLenum _type, char* code) {
-    uint32 s = glCreateShader(_type)/*not constant*/;
-    glShaderSource(s, 1, &code, 0);
-    glAttachShader(program, s);
-    return s;
-}
-static Shader create_shader(char* fragsrc, char* vertsrc) {
-    uint32 program = glCreateProgram()/*not constant*/;
-    uint32 f = makeshader(program, 35632, fragsrc)/*not constant*/;
-    uint32 v = makeshader(program, 35633, vertsrc)/*not constant*/;
-    glLinkProgram(program);
-    glDetachShader(program, f);
-    glDeleteShader(f);
-    glDetachShader(program, v);
-    glDeleteShader(v);
-    int32 status;
-    glGetProgramiv(program, 35714, &status);
-    if (status == 0) {
-        GLsizei size = 1024/*constant*/;
-        char buffer[size];
-        glGetProgramInfoLog(program, size, &size, buffer);
-        printf("%s", (char*)buffer);
-    }
-    Shader s;
-    s.gl_handle = program;
-    return s;
-}
 static Color rgba(uint32 i) {
     Color c;
     uint8* b = (uint8*)&i/*not constant*/;
@@ -3228,33 +3262,36 @@ static void draw_elements2(DrawBuffers db, uint32 instanceCount) {
     glDrawElementsInstanced(4, db.elements_count, 5125, 0, instanceCount);
     glBindVertexArray(0);
 }
-static void* list_create(uint32 stride) {
-    List* head = malloc((sizeof(List) + (stride * 2)))/*not constant*/;
-    head->stride = stride;
-    head->capacity = 2;
-    head->length = 0;
-    return &head[1];
+static void use(Shader s) {
+    glUseProgram(s.gl_handle);
 }
-static List* list_head(void* list) {
-    return &((List*)list)[-1];
+static uint32 makeshader(uint32 program, GLenum _type, char* code) {
+    uint32 s = glCreateShader(_type)/*not constant*/;
+    glShaderSource(s, 1, &code, 0);
+    glAttachShader(program, s);
+    return s;
 }
-static void list_clear(void* list) {
-    list_head(list)->length = 0;
-}
-static void list_add(void** list, void* data) {
-    List* head = list_head(*list)/*not constant*/;
-    if (head->capacity == head->length) {
-        head->capacity *= 2;
-        head = realloc(head, (sizeof(List) + (head->capacity * head->stride)));
-        *list = &head[1];
+static Shader create_shader(char* fragsrc, char* vertsrc) {
+    // local procedure
+    uint32 program = glCreateProgram()/*not constant*/;
+    uint32 f = makeshader(program, 35632, fragsrc)/*not constant*/;
+    uint32 v = makeshader(program, 35633, vertsrc)/*not constant*/;
+    glLinkProgram(program);
+    glDetachShader(program, f);
+    glDeleteShader(f);
+    glDetachShader(program, v);
+    glDeleteShader(v);
+    int32 status;
+    glGetProgramiv(program, 35714, &status);
+    if (status == 0) {
+        GLsizei size = 1024/*constant*/;
+        char buffer[size];
+        glGetProgramInfoLog(program, size, &size, buffer);
+        printf("%s", (char*)buffer);
     }
-    uint64 dst = (uint64)*list/*not constant*/;
-    dst += (head->length * head->stride);
-    memcpy((void*)dst, data, head->stride);
-    head->length++;
-}
-static uint32 list_length(void* list) {
-    return list_head(list)->length;
+    Shader s;
+    s.gl_handle = program;
+    return s;
 }
 static void dispatch_immediate() {
     uint32 vert_count = list_length(immediate_vertices)/*not constant*/;
@@ -3527,46 +3564,103 @@ static vec4 reflect3(vec4 a, vec4 normal) {
 static vec4 lerp4(float32 t, vec4 a, vec4 b) {
     return add3(a, mul6(sub3(b, a), t));
 }
-static vec4 col1(mat4 m) {
+static vec2 col11(mat2 m) {
+    return (vec2) {m.row1.x, m.row2.x};
+}
+static vec2 col21(mat2 m) {
+    return (vec2) {m.row1.y, m.row2.y};
+}
+static mat2 transpose1(mat2 m) {
+    return (mat2) {col11(m), col21(m)};
+}
+static float32 det(mat2 m) {
+    return ((m.row1.x * m.row2.y) - (m.row1.y * m.row2.x));
+}
+static mat2 mul7(mat2 a, mat2 b) {
+    mat2 res;
+    res.row1.x = dot1(a.row1, col11(b));
+    res.row1.y = dot1(a.row1, col21(b));
+    res.row2.x = dot1(a.row2, col11(b));
+    res.row2.y = dot1(a.row2, col21(b));
+    return res;
+}
+static vec2 mul8(mat2 m, vec2 v) {
+    return (vec2) {dot1(m.row1, v), dot1(m.row2, v)};
+}
+static vec2 mul9(vec2 v, mat2 m) {
+    return (vec2) {dot1(v, col11(m)), dot1(v, col21(m))};
+}
+static vec3 col12(mat3 m) {
+    return (vec3) {m.row1.x, m.row2.x, m.row3.x};
+}
+static vec3 col22(mat3 m) {
+    return (vec3) {m.row1.y, m.row2.y, m.row3.y};
+}
+static vec3 col31(mat3 m) {
+    return (vec3) {m.row1.z, m.row2.z, m.row3.z};
+}
+static mat3 transpose2(mat3 m) {
+    return (mat3) {col12(m), col22(m), col31(m)};
+}
+static mat3 mul10(mat3 a, mat3 b) {
+    mat3 res;
+    res.row1.x = dot2(a.row1, col12(b));
+    res.row1.y = dot2(a.row1, col22(b));
+    res.row1.z = dot2(a.row1, col31(b));
+    res.row2.x = dot2(a.row2, col12(b));
+    res.row2.y = dot2(a.row2, col22(b));
+    res.row2.z = dot2(a.row2, col31(b));
+    res.row3.x = dot2(a.row3, col12(b));
+    res.row3.y = dot2(a.row3, col22(b));
+    res.row3.z = dot2(a.row3, col31(b));
+    return res;
+}
+static vec3 mul11(mat3 m, vec3 v) {
+    return (vec3) {dot2(m.row1, v), dot2(m.row2, v), dot2(m.row3, v)};
+}
+static vec3 mul12(vec3 v, mat3 m) {
+    return (vec3) {dot2(v, col12(m)), dot2(v, col22(m)), dot2(v, col31(m))};
+}
+static vec4 col13(mat4 m) {
     return (vec4) {m.row1.x, m.row2.x, m.row3.x, m.row4.x};
 }
-static vec4 col2(mat4 m) {
+static vec4 col23(mat4 m) {
     return (vec4) {m.row1.y, m.row2.y, m.row3.y, m.row4.y};
 }
-static vec4 col3(mat4 m) {
+static vec4 col32(mat4 m) {
     return (vec4) {m.row1.z, m.row2.z, m.row3.z, m.row4.z};
 }
 static vec4 col4(mat4 m) {
     return (vec4) {m.row1.w, m.row2.w, m.row3.w, m.row4.w};
 }
-static mat4 transpose(mat4 m) {
-    return (mat4) {col1(m), col2(m), col3(m), col4(m)};
+static mat4 transpose3(mat4 m) {
+    return (mat4) {col13(m), col23(m), col32(m), col4(m)};
 }
-static mat4 mul7(mat4 a, mat4 b) {
+static mat4 mul13(mat4 a, mat4 b) {
     mat4 res;
-    res.row1.x = dot3(a.row1, col1(b));
-    res.row1.y = dot3(a.row1, col2(b));
-    res.row1.z = dot3(a.row1, col3(b));
+    res.row1.x = dot3(a.row1, col13(b));
+    res.row1.y = dot3(a.row1, col23(b));
+    res.row1.z = dot3(a.row1, col32(b));
     res.row1.w = dot3(a.row1, col4(b));
-    res.row2.x = dot3(a.row2, col1(b));
-    res.row2.y = dot3(a.row2, col2(b));
-    res.row2.z = dot3(a.row2, col3(b));
+    res.row2.x = dot3(a.row2, col13(b));
+    res.row2.y = dot3(a.row2, col23(b));
+    res.row2.z = dot3(a.row2, col32(b));
     res.row2.w = dot3(a.row2, col4(b));
-    res.row3.x = dot3(a.row3, col1(b));
-    res.row3.y = dot3(a.row3, col2(b));
-    res.row3.z = dot3(a.row3, col3(b));
+    res.row3.x = dot3(a.row3, col13(b));
+    res.row3.y = dot3(a.row3, col23(b));
+    res.row3.z = dot3(a.row3, col32(b));
     res.row3.w = dot3(a.row3, col4(b));
-    res.row4.x = dot3(a.row4, col1(b));
-    res.row4.y = dot3(a.row4, col2(b));
-    res.row4.z = dot3(a.row4, col3(b));
+    res.row4.x = dot3(a.row4, col13(b));
+    res.row4.y = dot3(a.row4, col23(b));
+    res.row4.z = dot3(a.row4, col32(b));
     res.row4.w = dot3(a.row4, col4(b));
     return res;
 }
-static vec4 mul8(mat4 m, vec4 v) {
+static vec4 mul14(mat4 m, vec4 v) {
     return (vec4) {dot3(m.row1, v), dot3(m.row2, v), dot3(m.row3, v), dot3(m.row4, v)};
 }
-static vec4 mul9(vec4 v, mat4 m) {
-    return (vec4) {dot3(v, col1(m)), dot3(v, col2(m)), dot3(v, col3(m)), dot3(v, col4(m))};
+static vec4 mul15(vec4 v, mat4 m) {
+    return (vec4) {dot3(v, col13(m)), dot3(v, col23(m)), dot3(v, col32(m)), dot3(v, col4(m))};
 }
 static mat4 perspective(float32 fovy, float32 aspect, float32 near_depth, float32 far_depth) {
     float32 maxY = (near_depth * tanf((0.500000 * fovy)))/*not constant*/;
@@ -3591,7 +3685,7 @@ static quat normalize4(quat q) {
     float32 l = sqrtf(((((q.x * q.x) + (q.y * q.y)) + (q.z * q.z)) + (q.w * q.w)))/*not constant*/;
     return (quat) {(q.x / l), (q.y / l), (q.z / l), (q.w / l)};
 }
-static quat mul10(quat l, quat r) {
+static quat mul16(quat l, quat r) {
     float32 a = l.w/*not constant*/;
     float32 b = l.x/*not constant*/;
     float32 c = l.y/*not constant*/;
