@@ -89,20 +89,20 @@ Entity* appendEntity(DrawBuffers db) {
 
 DrawBuffers genCircle(int32 res, float32 radius) {
     uint32 vertsCount = res as uint32 + 1;
-    vertex verts[vertsCount];
-    verts[0].x = 0;
-    verts[0].y = 0;
+    vertex2D* verts = malloc(vertsCount * sizeof vertex2D);
+    verts[0].pos.x = 0;
+    verts[0].pos.y = 0;
 
     for i : 1 .. res + 1 {
         float32 angle = i * Tau / res;
-        verts[i].x = cosf(angle) * radius;
-        verts[i].y = sinf(angle) * radius;
+        verts[i].pos.x = cosf(angle) * radius;
+        verts[i].pos.y = sinf(angle) * radius;
 
         verts[i].color = White;
     }
 
     uint32 indsCount = (res as uint32) * 3;
-    uint32 inds[indsCount];
+    uint32* inds = malloc(indsCount * sizeof uint32);
     uint32 i = 0;
     uint32 v = 1;
     while i < indsCount {
@@ -116,6 +116,8 @@ DrawBuffers genCircle(int32 res, float32 radius) {
 
     let db = create_draw_buffers();
     update_buffers(*db, verts, vertsCount, inds, indsCount);
+    free(verts);
+    free(inds);
     return db;
 }
 
@@ -355,7 +357,7 @@ int32 main() {
 
     while grax_loop() {
 
-        use(shader);
+        use(*shader);
         // bind(player_texture);
         bind(random_texture);
 

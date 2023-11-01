@@ -11,6 +11,7 @@ typedef unsigned long long uint64;
 typedef float float32;
 typedef double float64;
 int printf(const char* format, ...);
+typedef struct Array { void* data; uint32 length; } Array;
 
 // Structs forward declarations
 typedef struct Entity Entity;
@@ -30,8 +31,6 @@ typedef struct Framebuffer Framebuffer;
 typedef struct Texture2D Texture2D;
 typedef struct Color Color;
 typedef struct ColorRgb ColorRgb;
-typedef struct DrawBuffers DrawBuffers;
-typedef struct vertex vertex;
 typedef struct Shader Shader;
 typedef struct vec2 vec2;
 typedef struct ivec2 ivec2;
@@ -46,6 +45,10 @@ typedef struct quat quat;
 typedef struct Transform Transform;
 typedef struct Transform2D Transform2D;
 typedef struct Image Image;
+typedef struct vertex3D vertex3D;
+typedef struct vertex2D vertex2D;
+typedef struct Mesh Mesh;
+typedef struct DrawBuffers DrawBuffers;
 
 // Enums
 
@@ -639,130 +642,123 @@ typedef void (*GLFWmonitorfun)(GLFWmonitor*, int32);
 typedef void (*GLFWjoystickfun)(int32, int32);
 
 // Structs
-typedef struct List {
+struct List {
     uint32 stride;
     uint32 capacity;
     uint32 length;
-} List;
-typedef struct GLFWvidmode {
+};
+struct GLFWvidmode {
     int32 width;
     int32 height;
     int32 redBits;
     int32 greenBits;
     int32 blueBits;
     int32 refreshRate;
-} GLFWvidmode;
-typedef struct GLFWgammaramp {
+};
+struct GLFWgammaramp {
     uint16* red;
     uint16* green;
     uint16* blue;
     uint32 size;
-} GLFWgammaramp;
-typedef struct GLFWimage {
+};
+struct GLFWimage {
     int32 width;
     int32 height;
     uint8* pixels;
-} GLFWimage;
-typedef struct GLFWgamepadstate {
+};
+struct GLFWgamepadstate {
     int32 removeThisField;
-} GLFWgamepadstate;
-typedef struct string {
+};
+struct string {
     char* chars;
     uint32 length;
-} string;
-typedef struct StringBuilder {
+};
+struct StringBuilder {
     char* content;
     uint32 capacity;
     uint32 length;
-} StringBuilder;
-typedef struct Framebuffer {
+};
+struct Framebuffer {
     uint32 width;
     uint32 height;
     uint32 gl_handle;
-} Framebuffer;
-typedef struct Texture2D {
+};
+struct Texture2D {
     uint32 width;
     uint32 height;
     uint32 gl_handle;
-} Texture2D;
-typedef struct Color {
+};
+struct Color {
     uint8 r;
     uint8 g;
     uint8 b;
     uint8 a;
-} Color;
-typedef struct ColorRgb {
+};
+struct ColorRgb {
     uint8 r;
     uint8 g;
     uint8 b;
-} ColorRgb;
-typedef struct DrawBuffers {
-    uint32 vao;
-    uint32 vbo;
-    uint32 ebo;
-    int32 elements_count;
-} DrawBuffers;
-typedef struct Shader {
+};
+struct Shader {
     uint32 gl_handle;
-} Shader;
-typedef struct vec2 {
+};
+struct vec2 {
     float32 x;
     float32 y;
-} vec2;
-typedef struct ivec2 {
+};
+struct ivec2 {
     int32 x;
     int32 y;
-} ivec2;
-typedef struct vec3 {
+};
+struct vec3 {
     float32 x;
     float32 y;
     float32 z;
-} vec3;
-typedef struct ivec3 {
+};
+struct ivec3 {
     int32 x;
     int32 y;
     int32 z;
-} ivec3;
-typedef struct vec4 {
+};
+struct vec4 {
     float32 x;
     float32 y;
     float32 z;
     float32 w;
-} vec4;
-typedef struct ivec4 {
+};
+struct ivec4 {
     int32 x;
     int32 y;
     int32 z;
     int32 w;
-} ivec4;
-typedef struct quat {
+};
+struct quat {
     float32 x;
     float32 y;
     float32 z;
     float32 w;
-} quat;
-typedef struct Image {
+};
+struct Image {
     uint32 width;
     uint32 height;
     Color* pixels;
-} Image;
-typedef struct Intersection {
+};
+struct DrawBuffers {
+    uint32 vao;
+    uint32 vbo;
+    uint32 ebo;
+    int32 elements_count;
+};
+struct Intersection {
     vec2 surface_normal;
     float32 distance;
-} Intersection;
-typedef struct vertex {
-    float32 x;
-    float32 y;
-    float32 u;
-    float32 v;
-    Color color;
-} vertex;
-typedef struct Transform2D {
+};
+struct Transform2D {
     vec2 pos;
     float32 rot;
     float32 scale;
-} Transform2D;
-typedef struct Planet {
+};
+struct Planet {
     DrawBuffers db;
     vec2 pos;
     float32 rot;
@@ -770,51 +766,69 @@ typedef struct Planet {
     float32 dist;
     float32 yearDuration;
     float32 orbitOffset;
-} Planet;
-typedef struct Lineseg {
+};
+struct Lineseg {
     vec2 start;
     vec2 end;
-} Lineseg;
-typedef struct Ray {
+};
+struct Ray {
     vec2 origin;
     vec2 dir;
-} Ray;
-typedef struct mat2 {
+};
+struct mat2 {
     vec2 row1;
     vec2 row2;
-} mat2;
-typedef struct VoxelGrid {
+};
+struct Mesh {
+    vertex3D* vertices;
+    uint32* indices;
+    uint32 vertices_count;
+    uint32 indices_count;
+    vec3 bb_min;
+    vec3 bb_max;
+};
+struct VoxelGrid {
     Transform2D transform;
     float32* data;
     uint32 res;
     DrawBuffers db;
     uint32 inds_outline_ebo;
     uint32 numVerts;
-    vertex* verts;
+    vertex2D* verts;
     uint32* inds;
     uint32* inds_outline;
-} VoxelGrid;
-typedef struct mat3 {
+};
+struct mat3 {
     vec3 row1;
     vec3 row2;
     vec3 row3;
-} mat3;
-typedef struct Transform {
+};
+struct Transform {
     vec3 position;
     vec3 scale;
     quat rotation;
-} Transform;
-typedef struct Entity {
+};
+struct vertex3D {
+    vec3 pos;
+    vec3 normal;
+    vec2 uv;
+};
+struct vertex2D {
+    vec2 pos;
+    vec2 uv;
+    Color color;
+};
+struct Entity {
     Transform2D transform;
     DrawBuffers db;
     vec2 vel;
-} Entity;
-typedef struct mat4 {
+};
+struct mat4 {
     vec4 row1;
     vec4 row2;
     vec4 row3;
     vec4 row4;
-} mat4;
+};
 
 // Forward declarations
 static void init_gizmos();
@@ -836,7 +850,7 @@ static Texture2D load_texture(char* file_name);
 static void load();
 static VoxelGrid generatePlanet();
 static void on_key_input(GLFWwindow* window, int32 key, int32 scancode, int32 action, int32 mods);
-int32 main();
+int32 __main();
 static void add_tri(VoxelGrid* grid, uint32 i1, uint32 i2, uint32 i3);
 static void add_outline(VoxelGrid* grid, uint32 i1, uint32 i2);
 static uint32 getIndex(uint32 res, uint32 x, uint32 y);
@@ -1010,25 +1024,17 @@ static void sb_insert(StringBuilder* sb, int32 loc, string str);
 static void sb_remove(StringBuilder* sb, int32 loc, uint32 num_chars);
 static void sb_clear(StringBuilder* sb);
 static vec2 window_size();
-static int32 key1(char c);
-static int32 key2(int32 c);
-static int32 mouse(int32 btn);
 static int32 grax_loop();
 static void grax_init();
 static void on_resize(GLFWwindow* window, int32 w, int32 h);
 static void opengl_debug_callback(GLenum source, GLenum _type, GLuint id, GLenum severity, GLsizei length, GLchar* message, void* userParam);
-static GLFWmonitor* get_ideal_monitor();
+static GLFWmonitor* get_ideal_monitor(GLFWwindow* window);
 static void toggle_fullscreen(GLFWwindow* window);
 static Color rgba(uint32 i);
 static Texture2D create_texture2D(Image image);
 static void bind(Texture2D tex);
 static void set_filter(Texture2D tex, uint32 filter);
-static DrawBuffers create_draw_buffers();
-static void update_buffers(DrawBuffers* db, vertex* vertices, uint32 vertices_count, uint32* indices, uint32 indices_count);
-static void update_buffer(uint32 buffer, uint32 size, void* data);
-static void draw_elements1(DrawBuffers db);
-static void draw_elements2(DrawBuffers db, uint32 instanceCount);
-static void use(Shader s);
+static void use(Shader* s);
 static Shader create_shader(char* fragsrc, char* vertsrc);
 static void dispatch_immediate();
 static void immediate_vertex1(float32 x, float32 y, float32 u, float32 v);
@@ -1133,570 +1139,582 @@ static vec2 local2world2(Transform2D t, float32 x, float32 y);
 static vec2 world2local1(Transform2D t, vec2 p);
 static vec2 world2local2(Transform2D t, float32 x, float32 y);
 static Image load_bitmap(char* filename);
+static int32 key1(char c);
+static int32 key2(int32 c);
+static int32 mouse(int32 btn);
+static void setup_vertex2D_attributes();
+static void setup_vertex3D_attributes();
+static DrawBuffers create_draw_buffers1(Mesh mesh);
+static DrawBuffers create_draw_buffers2();
+static void update_buffers(DrawBuffers* db, vertex2D* vertices, uint32 vertices_count, uint32* indices, uint32 indices_count);
+static void update_buffer(uint32 buffer, uint32 size, void* data);
+static void draw_elements1(DrawBuffers db);
+static void draw_elements2(DrawBuffers db, uint32 instanceCount);
 
 // Declarations
 static uint32 debug_lines_vao;
 static uint32 debug_lines_vbo;
-static vertex* debug_lines_vertices;
+static vertex2D* debug_lines_vertices;
 static Shader shader;
 static Transform2D camera;
 static VoxelGrid voxelGrid;
-static float32 voxel_edit_radius = 1/*constant*/;
+static float32 voxel_edit_radius = 1;
 static DrawBuffers voxelMesh_circle;
 static Texture2D player_texture;
 static Texture2D random_texture;
-static int32 entitiesLength = 0/*constant*/;
+static int32 entitiesLength = 0;
 static Entity* entities;
 static Entity* player;
 static Planet* planets;
-static proc_glActiveShaderProgram glActiveShaderProgram = 0/*constant*/;
-static proc_glActiveTexture glActiveTexture = 0/*constant*/;
-static proc_glAttachShader glAttachShader = 0/*constant*/;
-static proc_glBeginConditionalRender glBeginConditionalRender = 0/*constant*/;
-static proc_glBeginQuery glBeginQuery = 0/*constant*/;
-static proc_glBeginQueryIndexed glBeginQueryIndexed = 0/*constant*/;
-static proc_glBeginTransformFeedback glBeginTransformFeedback = 0/*constant*/;
-static proc_glBindAttribLocation glBindAttribLocation = 0/*constant*/;
-static proc_glBindBuffer glBindBuffer = 0/*constant*/;
-static proc_glBindBufferBase glBindBufferBase = 0/*constant*/;
-static proc_glBindBufferRange glBindBufferRange = 0/*constant*/;
-static proc_glBindFragDataLocation glBindFragDataLocation = 0/*constant*/;
-static proc_glBindFragDataLocationIndexed glBindFragDataLocationIndexed = 0/*constant*/;
-static proc_glBindFramebuffer glBindFramebuffer = 0/*constant*/;
-static proc_glBindImageTexture glBindImageTexture = 0/*constant*/;
-static proc_glBindProgramPipeline glBindProgramPipeline = 0/*constant*/;
-static proc_glBindRenderbuffer glBindRenderbuffer = 0/*constant*/;
-static proc_glBindSampler glBindSampler = 0/*constant*/;
-static proc_glBindTexture glBindTexture = 0/*constant*/;
-static proc_glBindTransformFeedback glBindTransformFeedback = 0/*constant*/;
-static proc_glBindVertexArray glBindVertexArray = 0/*constant*/;
-static proc_glBindVertexBuffer glBindVertexBuffer = 0/*constant*/;
-static proc_glBlendColor glBlendColor = 0/*constant*/;
-static proc_glBlendEquation glBlendEquation = 0/*constant*/;
-static proc_glBlendEquationSeparate glBlendEquationSeparate = 0/*constant*/;
-static proc_glBlendEquationSeparatei glBlendEquationSeparatei = 0/*constant*/;
-static proc_glBlendEquationi glBlendEquationi = 0/*constant*/;
-static proc_glBlendFunc glBlendFunc = 0/*constant*/;
-static proc_glBlendFuncSeparate glBlendFuncSeparate = 0/*constant*/;
-static proc_glBlendFuncSeparatei glBlendFuncSeparatei = 0/*constant*/;
-static proc_glBlendFunci glBlendFunci = 0/*constant*/;
-static proc_glBlitFramebuffer glBlitFramebuffer = 0/*constant*/;
-static proc_glBufferData glBufferData = 0/*constant*/;
-static proc_glBufferSubData glBufferSubData = 0/*constant*/;
-static proc_glCheckFramebufferStatus glCheckFramebufferStatus = 0/*constant*/;
-static proc_glClampColor glClampColor = 0/*constant*/;
-static proc_glClear glClear = 0/*constant*/;
-static proc_glClearBufferData glClearBufferData = 0/*constant*/;
-static proc_glClearBufferSubData glClearBufferSubData = 0/*constant*/;
-static proc_glClearBufferfi glClearBufferfi = 0/*constant*/;
-static proc_glClearBufferfv glClearBufferfv = 0/*constant*/;
-static proc_glClearBufferiv glClearBufferiv = 0/*constant*/;
-static proc_glClearBufferuiv glClearBufferuiv = 0/*constant*/;
-static proc_glClearColor glClearColor = 0/*constant*/;
-static proc_glClearDepth glClearDepth = 0/*constant*/;
-static proc_glClearDepthf glClearDepthf = 0/*constant*/;
-static proc_glClearStencil glClearStencil = 0/*constant*/;
-static proc_glClientWaitSync glClientWaitSync = 0/*constant*/;
-static proc_glColorMask glColorMask = 0/*constant*/;
-static proc_glColorMaski glColorMaski = 0/*constant*/;
-static proc_glCompileShader glCompileShader = 0/*constant*/;
-static proc_glCompressedTexImage1D glCompressedTexImage1D = 0/*constant*/;
-static proc_glCompressedTexImage2D glCompressedTexImage2D = 0/*constant*/;
-static proc_glCompressedTexImage3D glCompressedTexImage3D = 0/*constant*/;
-static proc_glCompressedTexSubImage1D glCompressedTexSubImage1D = 0/*constant*/;
-static proc_glCompressedTexSubImage2D glCompressedTexSubImage2D = 0/*constant*/;
-static proc_glCompressedTexSubImage3D glCompressedTexSubImage3D = 0/*constant*/;
-static proc_glCopyBufferSubData glCopyBufferSubData = 0/*constant*/;
-static proc_glCopyImageSubData glCopyImageSubData = 0/*constant*/;
-static proc_glCopyTexImage1D glCopyTexImage1D = 0/*constant*/;
-static proc_glCopyTexImage2D glCopyTexImage2D = 0/*constant*/;
-static proc_glCopyTexSubImage1D glCopyTexSubImage1D = 0/*constant*/;
-static proc_glCopyTexSubImage2D glCopyTexSubImage2D = 0/*constant*/;
-static proc_glCopyTexSubImage3D glCopyTexSubImage3D = 0/*constant*/;
-static proc_glCreateProgram glCreateProgram = 0/*constant*/;
-static proc_glCreateShader glCreateShader = 0/*constant*/;
-static proc_glCreateShaderProgramv glCreateShaderProgramv = 0/*constant*/;
-static proc_glCullFace glCullFace = 0/*constant*/;
-static proc_glDebugMessageCallback glDebugMessageCallback = 0/*constant*/;
-static proc_glDebugMessageControl glDebugMessageControl = 0/*constant*/;
-static proc_glDebugMessageInsert glDebugMessageInsert = 0/*constant*/;
-static proc_glDeleteBuffers glDeleteBuffers = 0/*constant*/;
-static proc_glDeleteFramebuffers glDeleteFramebuffers = 0/*constant*/;
-static proc_glDeleteProgram glDeleteProgram = 0/*constant*/;
-static proc_glDeleteProgramPipelines glDeleteProgramPipelines = 0/*constant*/;
-static proc_glDeleteQueries glDeleteQueries = 0/*constant*/;
-static proc_glDeleteRenderbuffers glDeleteRenderbuffers = 0/*constant*/;
-static proc_glDeleteSamplers glDeleteSamplers = 0/*constant*/;
-static proc_glDeleteShader glDeleteShader = 0/*constant*/;
-static proc_glDeleteSync glDeleteSync = 0/*constant*/;
-static proc_glDeleteTextures glDeleteTextures = 0/*constant*/;
-static proc_glDeleteTransformFeedbacks glDeleteTransformFeedbacks = 0/*constant*/;
-static proc_glDeleteVertexArrays glDeleteVertexArrays = 0/*constant*/;
-static proc_glDepthFunc glDepthFunc = 0/*constant*/;
-static proc_glDepthMask glDepthMask = 0/*constant*/;
-static proc_glDepthRange glDepthRange = 0/*constant*/;
-static proc_glDepthRangeArrayv glDepthRangeArrayv = 0/*constant*/;
-static proc_glDepthRangeIndexed glDepthRangeIndexed = 0/*constant*/;
-static proc_glDepthRangef glDepthRangef = 0/*constant*/;
-static proc_glDetachShader glDetachShader = 0/*constant*/;
-static proc_glDisable glDisable = 0/*constant*/;
-static proc_glDisableVertexAttribArray glDisableVertexAttribArray = 0/*constant*/;
-static proc_glDisablei glDisablei = 0/*constant*/;
-static proc_glDispatchCompute glDispatchCompute = 0/*constant*/;
-static proc_glDispatchComputeIndirect glDispatchComputeIndirect = 0/*constant*/;
-static proc_glDrawArrays glDrawArrays = 0/*constant*/;
-static proc_glDrawArraysIndirect glDrawArraysIndirect = 0/*constant*/;
-static proc_glDrawArraysInstanced glDrawArraysInstanced = 0/*constant*/;
-static proc_glDrawArraysInstancedBaseInstance glDrawArraysInstancedBaseInstance = 0/*constant*/;
-static proc_glDrawBuffer glDrawBuffer = 0/*constant*/;
-static proc_glDrawBuffers glDrawBuffers = 0/*constant*/;
-static proc_glDrawElements glDrawElements = 0/*constant*/;
-static proc_glDrawElementsBaseVertex glDrawElementsBaseVertex = 0/*constant*/;
-static proc_glDrawElementsIndirect glDrawElementsIndirect = 0/*constant*/;
-static proc_glDrawElementsInstanced glDrawElementsInstanced = 0/*constant*/;
-static proc_glDrawElementsInstancedBaseInstance glDrawElementsInstancedBaseInstance = 0/*constant*/;
-static proc_glDrawElementsInstancedBaseVertex glDrawElementsInstancedBaseVertex = 0/*constant*/;
-static proc_glDrawElementsInstancedBaseVertexBaseInstance glDrawElementsInstancedBaseVertexBaseInstance = 0/*constant*/;
-static proc_glDrawRangeElements glDrawRangeElements = 0/*constant*/;
-static proc_glDrawRangeElementsBaseVertex glDrawRangeElementsBaseVertex = 0/*constant*/;
-static proc_glDrawTransformFeedback glDrawTransformFeedback = 0/*constant*/;
-static proc_glDrawTransformFeedbackInstanced glDrawTransformFeedbackInstanced = 0/*constant*/;
-static proc_glDrawTransformFeedbackStream glDrawTransformFeedbackStream = 0/*constant*/;
-static proc_glDrawTransformFeedbackStreamInstanced glDrawTransformFeedbackStreamInstanced = 0/*constant*/;
-static proc_glEnable glEnable = 0/*constant*/;
-static proc_glEnableVertexAttribArray glEnableVertexAttribArray = 0/*constant*/;
-static proc_glEnablei glEnablei = 0/*constant*/;
-static proc_glEndConditionalRender glEndConditionalRender = 0/*constant*/;
-static proc_glEndQuery glEndQuery = 0/*constant*/;
-static proc_glEndQueryIndexed glEndQueryIndexed = 0/*constant*/;
-static proc_glEndTransformFeedback glEndTransformFeedback = 0/*constant*/;
-static proc_glFenceSync glFenceSync = 0/*constant*/;
-static proc_glFinish glFinish = 0/*constant*/;
-static proc_glFlush glFlush = 0/*constant*/;
-static proc_glFlushMappedBufferRange glFlushMappedBufferRange = 0/*constant*/;
-static proc_glFramebufferParameteri glFramebufferParameteri = 0/*constant*/;
-static proc_glFramebufferRenderbuffer glFramebufferRenderbuffer = 0/*constant*/;
-static proc_glFramebufferTexture glFramebufferTexture = 0/*constant*/;
-static proc_glFramebufferTexture1D glFramebufferTexture1D = 0/*constant*/;
-static proc_glFramebufferTexture2D glFramebufferTexture2D = 0/*constant*/;
-static proc_glFramebufferTexture3D glFramebufferTexture3D = 0/*constant*/;
-static proc_glFramebufferTextureLayer glFramebufferTextureLayer = 0/*constant*/;
-static proc_glFrontFace glFrontFace = 0/*constant*/;
-static proc_glGenBuffers glGenBuffers = 0/*constant*/;
-static proc_glGenFramebuffers glGenFramebuffers = 0/*constant*/;
-static proc_glGenProgramPipelines glGenProgramPipelines = 0/*constant*/;
-static proc_glGenQueries glGenQueries = 0/*constant*/;
-static proc_glGenRenderbuffers glGenRenderbuffers = 0/*constant*/;
-static proc_glGenSamplers glGenSamplers = 0/*constant*/;
-static proc_glGenTextures glGenTextures = 0/*constant*/;
-static proc_glGenTransformFeedbacks glGenTransformFeedbacks = 0/*constant*/;
-static proc_glGenVertexArrays glGenVertexArrays = 0/*constant*/;
-static proc_glGenerateMipmap glGenerateMipmap = 0/*constant*/;
-static proc_glGetActiveAtomicCounterBufferiv glGetActiveAtomicCounterBufferiv = 0/*constant*/;
-static proc_glGetActiveAttrib glGetActiveAttrib = 0/*constant*/;
-static proc_glGetActiveSubroutineName glGetActiveSubroutineName = 0/*constant*/;
-static proc_glGetActiveSubroutineUniformName glGetActiveSubroutineUniformName = 0/*constant*/;
-static proc_glGetActiveSubroutineUniformiv glGetActiveSubroutineUniformiv = 0/*constant*/;
-static proc_glGetActiveUniform glGetActiveUniform = 0/*constant*/;
-static proc_glGetActiveUniformBlockName glGetActiveUniformBlockName = 0/*constant*/;
-static proc_glGetActiveUniformBlockiv glGetActiveUniformBlockiv = 0/*constant*/;
-static proc_glGetActiveUniformName glGetActiveUniformName = 0/*constant*/;
-static proc_glGetActiveUniformsiv glGetActiveUniformsiv = 0/*constant*/;
-static proc_glGetAttachedShaders glGetAttachedShaders = 0/*constant*/;
-static proc_glGetAttribLocation glGetAttribLocation = 0/*constant*/;
-static proc_glGetBooleani_v glGetBooleani_v = 0/*constant*/;
-static proc_glGetBooleanv glGetBooleanv = 0/*constant*/;
-static proc_glGetBufferParameteri64v glGetBufferParameteri64v = 0/*constant*/;
-static proc_glGetBufferParameteriv glGetBufferParameteriv = 0/*constant*/;
-static proc_glGetBufferPointerv glGetBufferPointerv = 0/*constant*/;
-static proc_glGetBufferSubData glGetBufferSubData = 0/*constant*/;
-static proc_glGetCompressedTexImage glGetCompressedTexImage = 0/*constant*/;
-static proc_glGetDebugMessageLog glGetDebugMessageLog = 0/*constant*/;
-static proc_glGetDoublei_v glGetDoublei_v = 0/*constant*/;
-static proc_glGetDoublev glGetDoublev = 0/*constant*/;
-static proc_glGetError glGetError = 0/*constant*/;
-static proc_glGetFloati_v glGetFloati_v = 0/*constant*/;
-static proc_glGetFloatv glGetFloatv = 0/*constant*/;
-static proc_glGetFragDataIndex glGetFragDataIndex = 0/*constant*/;
-static proc_glGetFragDataLocation glGetFragDataLocation = 0/*constant*/;
-static proc_glGetFramebufferAttachmentParameteriv glGetFramebufferAttachmentParameteriv = 0/*constant*/;
-static proc_glGetFramebufferParameteriv glGetFramebufferParameteriv = 0/*constant*/;
-static proc_glGetInteger64i_v glGetInteger64i_v = 0/*constant*/;
-static proc_glGetInteger64v glGetInteger64v = 0/*constant*/;
-static proc_glGetIntegeri_v glGetIntegeri_v = 0/*constant*/;
-static proc_glGetIntegerv glGetIntegerv = 0/*constant*/;
-static proc_glGetInternalformati64v glGetInternalformati64v = 0/*constant*/;
-static proc_glGetInternalformativ glGetInternalformativ = 0/*constant*/;
-static proc_glGetMultisamplefv glGetMultisamplefv = 0/*constant*/;
-static proc_glGetObjectLabel glGetObjectLabel = 0/*constant*/;
-static proc_glGetObjectPtrLabel glGetObjectPtrLabel = 0/*constant*/;
-static proc_glGetPointerv glGetPointerv = 0/*constant*/;
-static proc_glGetProgramBinary glGetProgramBinary = 0/*constant*/;
-static proc_glGetProgramInfoLog glGetProgramInfoLog = 0/*constant*/;
-static proc_glGetProgramInterfaceiv glGetProgramInterfaceiv = 0/*constant*/;
-static proc_glGetProgramPipelineInfoLog glGetProgramPipelineInfoLog = 0/*constant*/;
-static proc_glGetProgramPipelineiv glGetProgramPipelineiv = 0/*constant*/;
-static proc_glGetProgramResourceIndex glGetProgramResourceIndex = 0/*constant*/;
-static proc_glGetProgramResourceLocation glGetProgramResourceLocation = 0/*constant*/;
-static proc_glGetProgramResourceLocationIndex glGetProgramResourceLocationIndex = 0/*constant*/;
-static proc_glGetProgramResourceName glGetProgramResourceName = 0/*constant*/;
-static proc_glGetProgramResourceiv glGetProgramResourceiv = 0/*constant*/;
-static proc_glGetProgramStageiv glGetProgramStageiv = 0/*constant*/;
-static proc_glGetProgramiv glGetProgramiv = 0/*constant*/;
-static proc_glGetQueryIndexediv glGetQueryIndexediv = 0/*constant*/;
-static proc_glGetQueryObjecti64v glGetQueryObjecti64v = 0/*constant*/;
-static proc_glGetQueryObjectiv glGetQueryObjectiv = 0/*constant*/;
-static proc_glGetQueryObjectui64v glGetQueryObjectui64v = 0/*constant*/;
-static proc_glGetQueryObjectuiv glGetQueryObjectuiv = 0/*constant*/;
-static proc_glGetQueryiv glGetQueryiv = 0/*constant*/;
-static proc_glGetRenderbufferParameteriv glGetRenderbufferParameteriv = 0/*constant*/;
-static proc_glGetSamplerParameterIiv glGetSamplerParameterIiv = 0/*constant*/;
-static proc_glGetSamplerParameterIuiv glGetSamplerParameterIuiv = 0/*constant*/;
-static proc_glGetSamplerParameterfv glGetSamplerParameterfv = 0/*constant*/;
-static proc_glGetSamplerParameteriv glGetSamplerParameteriv = 0/*constant*/;
-static proc_glGetShaderInfoLog glGetShaderInfoLog = 0/*constant*/;
-static proc_glGetShaderPrecisionFormat glGetShaderPrecisionFormat = 0/*constant*/;
-static proc_glGetShaderSource glGetShaderSource = 0/*constant*/;
-static proc_glGetShaderiv glGetShaderiv = 0/*constant*/;
-static proc_glGetString glGetString = 0/*constant*/;
-static proc_glGetStringi glGetStringi = 0/*constant*/;
-static proc_glGetSubroutineIndex glGetSubroutineIndex = 0/*constant*/;
-static proc_glGetSubroutineUniformLocation glGetSubroutineUniformLocation = 0/*constant*/;
-static proc_glGetSynciv glGetSynciv = 0/*constant*/;
-static proc_glGetTexImage glGetTexImage = 0/*constant*/;
-static proc_glGetTexLevelParameterfv glGetTexLevelParameterfv = 0/*constant*/;
-static proc_glGetTexLevelParameteriv glGetTexLevelParameteriv = 0/*constant*/;
-static proc_glGetTexParameterIiv glGetTexParameterIiv = 0/*constant*/;
-static proc_glGetTexParameterIuiv glGetTexParameterIuiv = 0/*constant*/;
-static proc_glGetTexParameterfv glGetTexParameterfv = 0/*constant*/;
-static proc_glGetTexParameteriv glGetTexParameteriv = 0/*constant*/;
-static proc_glGetTransformFeedbackVarying glGetTransformFeedbackVarying = 0/*constant*/;
-static proc_glGetUniformBlockIndex glGetUniformBlockIndex = 0/*constant*/;
-static proc_glGetUniformIndices glGetUniformIndices = 0/*constant*/;
-static proc_glGetUniformLocation glGetUniformLocation = 0/*constant*/;
-static proc_glGetUniformSubroutineuiv glGetUniformSubroutineuiv = 0/*constant*/;
-static proc_glGetUniformdv glGetUniformdv = 0/*constant*/;
-static proc_glGetUniformfv glGetUniformfv = 0/*constant*/;
-static proc_glGetUniformiv glGetUniformiv = 0/*constant*/;
-static proc_glGetUniformuiv glGetUniformuiv = 0/*constant*/;
-static proc_glGetVertexAttribIiv glGetVertexAttribIiv = 0/*constant*/;
-static proc_glGetVertexAttribIuiv glGetVertexAttribIuiv = 0/*constant*/;
-static proc_glGetVertexAttribLdv glGetVertexAttribLdv = 0/*constant*/;
-static proc_glGetVertexAttribPointerv glGetVertexAttribPointerv = 0/*constant*/;
-static proc_glGetVertexAttribdv glGetVertexAttribdv = 0/*constant*/;
-static proc_glGetVertexAttribfv glGetVertexAttribfv = 0/*constant*/;
-static proc_glGetVertexAttribiv glGetVertexAttribiv = 0/*constant*/;
-static proc_glHint glHint = 0/*constant*/;
-static proc_glInvalidateBufferData glInvalidateBufferData = 0/*constant*/;
-static proc_glInvalidateBufferSubData glInvalidateBufferSubData = 0/*constant*/;
-static proc_glInvalidateFramebuffer glInvalidateFramebuffer = 0/*constant*/;
-static proc_glInvalidateSubFramebuffer glInvalidateSubFramebuffer = 0/*constant*/;
-static proc_glInvalidateTexImage glInvalidateTexImage = 0/*constant*/;
-static proc_glInvalidateTexSubImage glInvalidateTexSubImage = 0/*constant*/;
-static proc_glIsBuffer glIsBuffer = 0/*constant*/;
-static proc_glIsEnabled glIsEnabled = 0/*constant*/;
-static proc_glIsEnabledi glIsEnabledi = 0/*constant*/;
-static proc_glIsFramebuffer glIsFramebuffer = 0/*constant*/;
-static proc_glIsProgram glIsProgram = 0/*constant*/;
-static proc_glIsProgramPipeline glIsProgramPipeline = 0/*constant*/;
-static proc_glIsQuery glIsQuery = 0/*constant*/;
-static proc_glIsRenderbuffer glIsRenderbuffer = 0/*constant*/;
-static proc_glIsSampler glIsSampler = 0/*constant*/;
-static proc_glIsShader glIsShader = 0/*constant*/;
-static proc_glIsSync glIsSync = 0/*constant*/;
-static proc_glIsTexture glIsTexture = 0/*constant*/;
-static proc_glIsTransformFeedback glIsTransformFeedback = 0/*constant*/;
-static proc_glIsVertexArray glIsVertexArray = 0/*constant*/;
-static proc_glLineWidth glLineWidth = 0/*constant*/;
-static proc_glLinkProgram glLinkProgram = 0/*constant*/;
-static proc_glLogicOp glLogicOp = 0/*constant*/;
-static proc_glMapBuffer glMapBuffer = 0/*constant*/;
-static proc_glMapBufferRange glMapBufferRange = 0/*constant*/;
-static proc_glMemoryBarrier glMemoryBarrier = 0/*constant*/;
-static proc_glMinSampleShading glMinSampleShading = 0/*constant*/;
-static proc_glMultiDrawArrays glMultiDrawArrays = 0/*constant*/;
-static proc_glMultiDrawArraysIndirect glMultiDrawArraysIndirect = 0/*constant*/;
-static proc_glMultiDrawElements glMultiDrawElements = 0/*constant*/;
-static proc_glMultiDrawElementsBaseVertex glMultiDrawElementsBaseVertex = 0/*constant*/;
-static proc_glMultiDrawElementsIndirect glMultiDrawElementsIndirect = 0/*constant*/;
-static proc_glObjectLabel glObjectLabel = 0/*constant*/;
-static proc_glObjectPtrLabel glObjectPtrLabel = 0/*constant*/;
-static proc_glPatchParameterfv glPatchParameterfv = 0/*constant*/;
-static proc_glPatchParameteri glPatchParameteri = 0/*constant*/;
-static proc_glPauseTransformFeedback glPauseTransformFeedback = 0/*constant*/;
-static proc_glPixelStoref glPixelStoref = 0/*constant*/;
-static proc_glPixelStorei glPixelStorei = 0/*constant*/;
-static proc_glPointParameterf glPointParameterf = 0/*constant*/;
-static proc_glPointParameterfv glPointParameterfv = 0/*constant*/;
-static proc_glPointParameteri glPointParameteri = 0/*constant*/;
-static proc_glPointParameteriv glPointParameteriv = 0/*constant*/;
-static proc_glPointSize glPointSize = 0/*constant*/;
-static proc_glPolygonMode glPolygonMode = 0/*constant*/;
-static proc_glPolygonOffset glPolygonOffset = 0/*constant*/;
-static proc_glPopDebugGroup glPopDebugGroup = 0/*constant*/;
-static proc_glPrimitiveRestartIndex glPrimitiveRestartIndex = 0/*constant*/;
-static proc_glProgramBinary glProgramBinary = 0/*constant*/;
-static proc_glProgramParameteri glProgramParameteri = 0/*constant*/;
-static proc_glProgramUniform1d glProgramUniform1d = 0/*constant*/;
-static proc_glProgramUniform1dv glProgramUniform1dv = 0/*constant*/;
-static proc_glProgramUniform1f glProgramUniform1f = 0/*constant*/;
-static proc_glProgramUniform1fv glProgramUniform1fv = 0/*constant*/;
-static proc_glProgramUniform1i glProgramUniform1i = 0/*constant*/;
-static proc_glProgramUniform1iv glProgramUniform1iv = 0/*constant*/;
-static proc_glProgramUniform1ui glProgramUniform1ui = 0/*constant*/;
-static proc_glProgramUniform1uiv glProgramUniform1uiv = 0/*constant*/;
-static proc_glProgramUniform2d glProgramUniform2d = 0/*constant*/;
-static proc_glProgramUniform2dv glProgramUniform2dv = 0/*constant*/;
-static proc_glProgramUniform2f glProgramUniform2f = 0/*constant*/;
-static proc_glProgramUniform2fv glProgramUniform2fv = 0/*constant*/;
-static proc_glProgramUniform2i glProgramUniform2i = 0/*constant*/;
-static proc_glProgramUniform2iv glProgramUniform2iv = 0/*constant*/;
-static proc_glProgramUniform2ui glProgramUniform2ui = 0/*constant*/;
-static proc_glProgramUniform2uiv glProgramUniform2uiv = 0/*constant*/;
-static proc_glProgramUniform3d glProgramUniform3d = 0/*constant*/;
-static proc_glProgramUniform3dv glProgramUniform3dv = 0/*constant*/;
-static proc_glProgramUniform3f glProgramUniform3f = 0/*constant*/;
-static proc_glProgramUniform3fv glProgramUniform3fv = 0/*constant*/;
-static proc_glProgramUniform3i glProgramUniform3i = 0/*constant*/;
-static proc_glProgramUniform3iv glProgramUniform3iv = 0/*constant*/;
-static proc_glProgramUniform3ui glProgramUniform3ui = 0/*constant*/;
-static proc_glProgramUniform3uiv glProgramUniform3uiv = 0/*constant*/;
-static proc_glProgramUniform4d glProgramUniform4d = 0/*constant*/;
-static proc_glProgramUniform4dv glProgramUniform4dv = 0/*constant*/;
-static proc_glProgramUniform4f glProgramUniform4f = 0/*constant*/;
-static proc_glProgramUniform4fv glProgramUniform4fv = 0/*constant*/;
-static proc_glProgramUniform4i glProgramUniform4i = 0/*constant*/;
-static proc_glProgramUniform4iv glProgramUniform4iv = 0/*constant*/;
-static proc_glProgramUniform4ui glProgramUniform4ui = 0/*constant*/;
-static proc_glProgramUniform4uiv glProgramUniform4uiv = 0/*constant*/;
-static proc_glProgramUniformMatrix2dv glProgramUniformMatrix2dv = 0/*constant*/;
-static proc_glProgramUniformMatrix2fv glProgramUniformMatrix2fv = 0/*constant*/;
-static proc_glProgramUniformMatrix2x3dv glProgramUniformMatrix2x3dv = 0/*constant*/;
-static proc_glProgramUniformMatrix2x3fv glProgramUniformMatrix2x3fv = 0/*constant*/;
-static proc_glProgramUniformMatrix2x4dv glProgramUniformMatrix2x4dv = 0/*constant*/;
-static proc_glProgramUniformMatrix2x4fv glProgramUniformMatrix2x4fv = 0/*constant*/;
-static proc_glProgramUniformMatrix3dv glProgramUniformMatrix3dv = 0/*constant*/;
-static proc_glProgramUniformMatrix3fv glProgramUniformMatrix3fv = 0/*constant*/;
-static proc_glProgramUniformMatrix3x2dv glProgramUniformMatrix3x2dv = 0/*constant*/;
-static proc_glProgramUniformMatrix3x2fv glProgramUniformMatrix3x2fv = 0/*constant*/;
-static proc_glProgramUniformMatrix3x4dv glProgramUniformMatrix3x4dv = 0/*constant*/;
-static proc_glProgramUniformMatrix3x4fv glProgramUniformMatrix3x4fv = 0/*constant*/;
-static proc_glProgramUniformMatrix4dv glProgramUniformMatrix4dv = 0/*constant*/;
-static proc_glProgramUniformMatrix4fv glProgramUniformMatrix4fv = 0/*constant*/;
-static proc_glProgramUniformMatrix4x2dv glProgramUniformMatrix4x2dv = 0/*constant*/;
-static proc_glProgramUniformMatrix4x2fv glProgramUniformMatrix4x2fv = 0/*constant*/;
-static proc_glProgramUniformMatrix4x3dv glProgramUniformMatrix4x3dv = 0/*constant*/;
-static proc_glProgramUniformMatrix4x3fv glProgramUniformMatrix4x3fv = 0/*constant*/;
-static proc_glProvokingVertex glProvokingVertex = 0/*constant*/;
-static proc_glPushDebugGroup glPushDebugGroup = 0/*constant*/;
-static proc_glQueryCounter glQueryCounter = 0/*constant*/;
-static proc_glReadBuffer glReadBuffer = 0/*constant*/;
-static proc_glReadPixels glReadPixels = 0/*constant*/;
-static proc_glReleaseShaderCompiler glReleaseShaderCompiler = 0/*constant*/;
-static proc_glRenderbufferStorage glRenderbufferStorage = 0/*constant*/;
-static proc_glRenderbufferStorageMultisample glRenderbufferStorageMultisample = 0/*constant*/;
-static proc_glResumeTransformFeedback glResumeTransformFeedback = 0/*constant*/;
-static proc_glSampleCoverage glSampleCoverage = 0/*constant*/;
-static proc_glSampleMaski glSampleMaski = 0/*constant*/;
-static proc_glSamplerParameterIiv glSamplerParameterIiv = 0/*constant*/;
-static proc_glSamplerParameterIuiv glSamplerParameterIuiv = 0/*constant*/;
-static proc_glSamplerParameterf glSamplerParameterf = 0/*constant*/;
-static proc_glSamplerParameterfv glSamplerParameterfv = 0/*constant*/;
-static proc_glSamplerParameteri glSamplerParameteri = 0/*constant*/;
-static proc_glSamplerParameteriv glSamplerParameteriv = 0/*constant*/;
-static proc_glScissor glScissor = 0/*constant*/;
-static proc_glScissorArrayv glScissorArrayv = 0/*constant*/;
-static proc_glScissorIndexed glScissorIndexed = 0/*constant*/;
-static proc_glScissorIndexedv glScissorIndexedv = 0/*constant*/;
-static proc_glShaderBinary glShaderBinary = 0/*constant*/;
-static proc_glShaderSource glShaderSource = 0/*constant*/;
-static proc_glShaderStorageBlockBinding glShaderStorageBlockBinding = 0/*constant*/;
-static proc_glStencilFunc glStencilFunc = 0/*constant*/;
-static proc_glStencilFuncSeparate glStencilFuncSeparate = 0/*constant*/;
-static proc_glStencilMask glStencilMask = 0/*constant*/;
-static proc_glStencilMaskSeparate glStencilMaskSeparate = 0/*constant*/;
-static proc_glStencilOp glStencilOp = 0/*constant*/;
-static proc_glStencilOpSeparate glStencilOpSeparate = 0/*constant*/;
-static proc_glTexBuffer glTexBuffer = 0/*constant*/;
-static proc_glTexBufferRange glTexBufferRange = 0/*constant*/;
-static proc_glTexImage1D glTexImage1D = 0/*constant*/;
-static proc_glTexImage2D glTexImage2D = 0/*constant*/;
-static proc_glTexImage2DMultisample glTexImage2DMultisample = 0/*constant*/;
-static proc_glTexImage3D glTexImage3D = 0/*constant*/;
-static proc_glTexImage3DMultisample glTexImage3DMultisample = 0/*constant*/;
-static proc_glTexParameterIiv glTexParameterIiv = 0/*constant*/;
-static proc_glTexParameterIuiv glTexParameterIuiv = 0/*constant*/;
-static proc_glTexParameterf glTexParameterf = 0/*constant*/;
-static proc_glTexParameterfv glTexParameterfv = 0/*constant*/;
-static proc_glTexParameteri glTexParameteri = 0/*constant*/;
-static proc_glTexParameteriv glTexParameteriv = 0/*constant*/;
-static proc_glTexStorage1D glTexStorage1D = 0/*constant*/;
-static proc_glTexStorage2D glTexStorage2D = 0/*constant*/;
-static proc_glTexStorage2DMultisample glTexStorage2DMultisample = 0/*constant*/;
-static proc_glTexStorage3D glTexStorage3D = 0/*constant*/;
-static proc_glTexStorage3DMultisample glTexStorage3DMultisample = 0/*constant*/;
-static proc_glTexSubImage1D glTexSubImage1D = 0/*constant*/;
-static proc_glTexSubImage2D glTexSubImage2D = 0/*constant*/;
-static proc_glTexSubImage3D glTexSubImage3D = 0/*constant*/;
-static proc_glTextureView glTextureView = 0/*constant*/;
-static proc_glTransformFeedbackVaryings glTransformFeedbackVaryings = 0/*constant*/;
-static proc_glUniform1d glUniform1d = 0/*constant*/;
-static proc_glUniform1dv glUniform1dv = 0/*constant*/;
-static proc_glUniform1f glUniform1f = 0/*constant*/;
-static proc_glUniform1fv glUniform1fv = 0/*constant*/;
-static proc_glUniform1i glUniform1i = 0/*constant*/;
-static proc_glUniform1iv glUniform1iv = 0/*constant*/;
-static proc_glUniform1ui glUniform1ui = 0/*constant*/;
-static proc_glUniform1uiv glUniform1uiv = 0/*constant*/;
-static proc_glUniform2d glUniform2d = 0/*constant*/;
-static proc_glUniform2dv glUniform2dv = 0/*constant*/;
-static proc_glUniform2f glUniform2f = 0/*constant*/;
-static proc_glUniform2fv glUniform2fv = 0/*constant*/;
-static proc_glUniform2i glUniform2i = 0/*constant*/;
-static proc_glUniform2iv glUniform2iv = 0/*constant*/;
-static proc_glUniform2ui glUniform2ui = 0/*constant*/;
-static proc_glUniform2uiv glUniform2uiv = 0/*constant*/;
-static proc_glUniform3d glUniform3d = 0/*constant*/;
-static proc_glUniform3dv glUniform3dv = 0/*constant*/;
-static proc_glUniform3f glUniform3f = 0/*constant*/;
-static proc_glUniform3fv glUniform3fv = 0/*constant*/;
-static proc_glUniform3i glUniform3i = 0/*constant*/;
-static proc_glUniform3iv glUniform3iv = 0/*constant*/;
-static proc_glUniform3ui glUniform3ui = 0/*constant*/;
-static proc_glUniform3uiv glUniform3uiv = 0/*constant*/;
-static proc_glUniform4d glUniform4d = 0/*constant*/;
-static proc_glUniform4dv glUniform4dv = 0/*constant*/;
-static proc_glUniform4f glUniform4f = 0/*constant*/;
-static proc_glUniform4fv glUniform4fv = 0/*constant*/;
-static proc_glUniform4i glUniform4i = 0/*constant*/;
-static proc_glUniform4iv glUniform4iv = 0/*constant*/;
-static proc_glUniform4ui glUniform4ui = 0/*constant*/;
-static proc_glUniform4uiv glUniform4uiv = 0/*constant*/;
-static proc_glUniformBlockBinding glUniformBlockBinding = 0/*constant*/;
-static proc_glUniformMatrix2dv glUniformMatrix2dv = 0/*constant*/;
-static proc_glUniformMatrix2fv glUniformMatrix2fv = 0/*constant*/;
-static proc_glUniformMatrix2x3dv glUniformMatrix2x3dv = 0/*constant*/;
-static proc_glUniformMatrix2x3fv glUniformMatrix2x3fv = 0/*constant*/;
-static proc_glUniformMatrix2x4dv glUniformMatrix2x4dv = 0/*constant*/;
-static proc_glUniformMatrix2x4fv glUniformMatrix2x4fv = 0/*constant*/;
-static proc_glUniformMatrix3dv glUniformMatrix3dv = 0/*constant*/;
-static proc_glUniformMatrix3fv glUniformMatrix3fv = 0/*constant*/;
-static proc_glUniformMatrix3x2dv glUniformMatrix3x2dv = 0/*constant*/;
-static proc_glUniformMatrix3x2fv glUniformMatrix3x2fv = 0/*constant*/;
-static proc_glUniformMatrix3x4dv glUniformMatrix3x4dv = 0/*constant*/;
-static proc_glUniformMatrix3x4fv glUniformMatrix3x4fv = 0/*constant*/;
-static proc_glUniformMatrix4dv glUniformMatrix4dv = 0/*constant*/;
-static proc_glUniformMatrix4fv glUniformMatrix4fv = 0/*constant*/;
-static proc_glUniformMatrix4x2dv glUniformMatrix4x2dv = 0/*constant*/;
-static proc_glUniformMatrix4x2fv glUniformMatrix4x2fv = 0/*constant*/;
-static proc_glUniformMatrix4x3dv glUniformMatrix4x3dv = 0/*constant*/;
-static proc_glUniformMatrix4x3fv glUniformMatrix4x3fv = 0/*constant*/;
-static proc_glUniformSubroutinesuiv glUniformSubroutinesuiv = 0/*constant*/;
-static proc_glUnmapBuffer glUnmapBuffer = 0/*constant*/;
-static proc_glUseProgram glUseProgram = 0/*constant*/;
-static proc_glUseProgramStages glUseProgramStages = 0/*constant*/;
-static proc_glValidateProgram glValidateProgram = 0/*constant*/;
-static proc_glValidateProgramPipeline glValidateProgramPipeline = 0/*constant*/;
-static proc_glVertexAttrib1d glVertexAttrib1d = 0/*constant*/;
-static proc_glVertexAttrib1dv glVertexAttrib1dv = 0/*constant*/;
-static proc_glVertexAttrib1f glVertexAttrib1f = 0/*constant*/;
-static proc_glVertexAttrib1fv glVertexAttrib1fv = 0/*constant*/;
-static proc_glVertexAttrib1s glVertexAttrib1s = 0/*constant*/;
-static proc_glVertexAttrib1sv glVertexAttrib1sv = 0/*constant*/;
-static proc_glVertexAttrib2d glVertexAttrib2d = 0/*constant*/;
-static proc_glVertexAttrib2dv glVertexAttrib2dv = 0/*constant*/;
-static proc_glVertexAttrib2f glVertexAttrib2f = 0/*constant*/;
-static proc_glVertexAttrib2fv glVertexAttrib2fv = 0/*constant*/;
-static proc_glVertexAttrib2s glVertexAttrib2s = 0/*constant*/;
-static proc_glVertexAttrib2sv glVertexAttrib2sv = 0/*constant*/;
-static proc_glVertexAttrib3d glVertexAttrib3d = 0/*constant*/;
-static proc_glVertexAttrib3dv glVertexAttrib3dv = 0/*constant*/;
-static proc_glVertexAttrib3f glVertexAttrib3f = 0/*constant*/;
-static proc_glVertexAttrib3fv glVertexAttrib3fv = 0/*constant*/;
-static proc_glVertexAttrib3s glVertexAttrib3s = 0/*constant*/;
-static proc_glVertexAttrib3sv glVertexAttrib3sv = 0/*constant*/;
-static proc_glVertexAttrib4Nbv glVertexAttrib4Nbv = 0/*constant*/;
-static proc_glVertexAttrib4Niv glVertexAttrib4Niv = 0/*constant*/;
-static proc_glVertexAttrib4Nsv glVertexAttrib4Nsv = 0/*constant*/;
-static proc_glVertexAttrib4Nub glVertexAttrib4Nub = 0/*constant*/;
-static proc_glVertexAttrib4Nubv glVertexAttrib4Nubv = 0/*constant*/;
-static proc_glVertexAttrib4Nuiv glVertexAttrib4Nuiv = 0/*constant*/;
-static proc_glVertexAttrib4Nusv glVertexAttrib4Nusv = 0/*constant*/;
-static proc_glVertexAttrib4bv glVertexAttrib4bv = 0/*constant*/;
-static proc_glVertexAttrib4d glVertexAttrib4d = 0/*constant*/;
-static proc_glVertexAttrib4dv glVertexAttrib4dv = 0/*constant*/;
-static proc_glVertexAttrib4f glVertexAttrib4f = 0/*constant*/;
-static proc_glVertexAttrib4fv glVertexAttrib4fv = 0/*constant*/;
-static proc_glVertexAttrib4iv glVertexAttrib4iv = 0/*constant*/;
-static proc_glVertexAttrib4s glVertexAttrib4s = 0/*constant*/;
-static proc_glVertexAttrib4sv glVertexAttrib4sv = 0/*constant*/;
-static proc_glVertexAttrib4ubv glVertexAttrib4ubv = 0/*constant*/;
-static proc_glVertexAttrib4uiv glVertexAttrib4uiv = 0/*constant*/;
-static proc_glVertexAttrib4usv glVertexAttrib4usv = 0/*constant*/;
-static proc_glVertexAttribBinding glVertexAttribBinding = 0/*constant*/;
-static proc_glVertexAttribDivisor glVertexAttribDivisor = 0/*constant*/;
-static proc_glVertexAttribFormat glVertexAttribFormat = 0/*constant*/;
-static proc_glVertexAttribI1i glVertexAttribI1i = 0/*constant*/;
-static proc_glVertexAttribI1iv glVertexAttribI1iv = 0/*constant*/;
-static proc_glVertexAttribI1ui glVertexAttribI1ui = 0/*constant*/;
-static proc_glVertexAttribI1uiv glVertexAttribI1uiv = 0/*constant*/;
-static proc_glVertexAttribI2i glVertexAttribI2i = 0/*constant*/;
-static proc_glVertexAttribI2iv glVertexAttribI2iv = 0/*constant*/;
-static proc_glVertexAttribI2ui glVertexAttribI2ui = 0/*constant*/;
-static proc_glVertexAttribI2uiv glVertexAttribI2uiv = 0/*constant*/;
-static proc_glVertexAttribI3i glVertexAttribI3i = 0/*constant*/;
-static proc_glVertexAttribI3iv glVertexAttribI3iv = 0/*constant*/;
-static proc_glVertexAttribI3ui glVertexAttribI3ui = 0/*constant*/;
-static proc_glVertexAttribI3uiv glVertexAttribI3uiv = 0/*constant*/;
-static proc_glVertexAttribI4bv glVertexAttribI4bv = 0/*constant*/;
-static proc_glVertexAttribI4i glVertexAttribI4i = 0/*constant*/;
-static proc_glVertexAttribI4iv glVertexAttribI4iv = 0/*constant*/;
-static proc_glVertexAttribI4sv glVertexAttribI4sv = 0/*constant*/;
-static proc_glVertexAttribI4ubv glVertexAttribI4ubv = 0/*constant*/;
-static proc_glVertexAttribI4ui glVertexAttribI4ui = 0/*constant*/;
-static proc_glVertexAttribI4uiv glVertexAttribI4uiv = 0/*constant*/;
-static proc_glVertexAttribI4usv glVertexAttribI4usv = 0/*constant*/;
-static proc_glVertexAttribIFormat glVertexAttribIFormat = 0/*constant*/;
-static proc_glVertexAttribIPointer glVertexAttribIPointer = 0/*constant*/;
-static proc_glVertexAttribL1d glVertexAttribL1d = 0/*constant*/;
-static proc_glVertexAttribL1dv glVertexAttribL1dv = 0/*constant*/;
-static proc_glVertexAttribL2d glVertexAttribL2d = 0/*constant*/;
-static proc_glVertexAttribL2dv glVertexAttribL2dv = 0/*constant*/;
-static proc_glVertexAttribL3d glVertexAttribL3d = 0/*constant*/;
-static proc_glVertexAttribL3dv glVertexAttribL3dv = 0/*constant*/;
-static proc_glVertexAttribL4d glVertexAttribL4d = 0/*constant*/;
-static proc_glVertexAttribL4dv glVertexAttribL4dv = 0/*constant*/;
-static proc_glVertexAttribLFormat glVertexAttribLFormat = 0/*constant*/;
-static proc_glVertexAttribLPointer glVertexAttribLPointer = 0/*constant*/;
-static proc_glVertexAttribP1ui glVertexAttribP1ui = 0/*constant*/;
-static proc_glVertexAttribP1uiv glVertexAttribP1uiv = 0/*constant*/;
-static proc_glVertexAttribP2ui glVertexAttribP2ui = 0/*constant*/;
-static proc_glVertexAttribP2uiv glVertexAttribP2uiv = 0/*constant*/;
-static proc_glVertexAttribP3ui glVertexAttribP3ui = 0/*constant*/;
-static proc_glVertexAttribP3uiv glVertexAttribP3uiv = 0/*constant*/;
-static proc_glVertexAttribP4ui glVertexAttribP4ui = 0/*constant*/;
-static proc_glVertexAttribP4uiv glVertexAttribP4uiv = 0/*constant*/;
-static proc_glVertexAttribPointer glVertexAttribPointer = 0/*constant*/;
-static proc_glVertexBindingDivisor glVertexBindingDivisor = 0/*constant*/;
-static proc_glViewport glViewport = 0/*constant*/;
-static proc_glViewportArrayv glViewportArrayv = 0/*constant*/;
-static proc_glViewportIndexedf glViewportIndexedf = 0/*constant*/;
-static proc_glViewportIndexedfv glViewportIndexedfv = 0/*constant*/;
-static proc_glWaitSync glWaitSync = 0/*constant*/;
-static char num_str[20];
+static proc_glActiveShaderProgram glActiveShaderProgram = 0;
+static proc_glActiveTexture glActiveTexture = 0;
+static proc_glAttachShader glAttachShader = 0;
+static proc_glBeginConditionalRender glBeginConditionalRender = 0;
+static proc_glBeginQuery glBeginQuery = 0;
+static proc_glBeginQueryIndexed glBeginQueryIndexed = 0;
+static proc_glBeginTransformFeedback glBeginTransformFeedback = 0;
+static proc_glBindAttribLocation glBindAttribLocation = 0;
+static proc_glBindBuffer glBindBuffer = 0;
+static proc_glBindBufferBase glBindBufferBase = 0;
+static proc_glBindBufferRange glBindBufferRange = 0;
+static proc_glBindFragDataLocation glBindFragDataLocation = 0;
+static proc_glBindFragDataLocationIndexed glBindFragDataLocationIndexed = 0;
+static proc_glBindFramebuffer glBindFramebuffer = 0;
+static proc_glBindImageTexture glBindImageTexture = 0;
+static proc_glBindProgramPipeline glBindProgramPipeline = 0;
+static proc_glBindRenderbuffer glBindRenderbuffer = 0;
+static proc_glBindSampler glBindSampler = 0;
+static proc_glBindTexture glBindTexture = 0;
+static proc_glBindTransformFeedback glBindTransformFeedback = 0;
+static proc_glBindVertexArray glBindVertexArray = 0;
+static proc_glBindVertexBuffer glBindVertexBuffer = 0;
+static proc_glBlendColor glBlendColor = 0;
+static proc_glBlendEquation glBlendEquation = 0;
+static proc_glBlendEquationSeparate glBlendEquationSeparate = 0;
+static proc_glBlendEquationSeparatei glBlendEquationSeparatei = 0;
+static proc_glBlendEquationi glBlendEquationi = 0;
+static proc_glBlendFunc glBlendFunc = 0;
+static proc_glBlendFuncSeparate glBlendFuncSeparate = 0;
+static proc_glBlendFuncSeparatei glBlendFuncSeparatei = 0;
+static proc_glBlendFunci glBlendFunci = 0;
+static proc_glBlitFramebuffer glBlitFramebuffer = 0;
+static proc_glBufferData glBufferData = 0;
+static proc_glBufferSubData glBufferSubData = 0;
+static proc_glCheckFramebufferStatus glCheckFramebufferStatus = 0;
+static proc_glClampColor glClampColor = 0;
+static proc_glClear glClear = 0;
+static proc_glClearBufferData glClearBufferData = 0;
+static proc_glClearBufferSubData glClearBufferSubData = 0;
+static proc_glClearBufferfi glClearBufferfi = 0;
+static proc_glClearBufferfv glClearBufferfv = 0;
+static proc_glClearBufferiv glClearBufferiv = 0;
+static proc_glClearBufferuiv glClearBufferuiv = 0;
+static proc_glClearColor glClearColor = 0;
+static proc_glClearDepth glClearDepth = 0;
+static proc_glClearDepthf glClearDepthf = 0;
+static proc_glClearStencil glClearStencil = 0;
+static proc_glClientWaitSync glClientWaitSync = 0;
+static proc_glColorMask glColorMask = 0;
+static proc_glColorMaski glColorMaski = 0;
+static proc_glCompileShader glCompileShader = 0;
+static proc_glCompressedTexImage1D glCompressedTexImage1D = 0;
+static proc_glCompressedTexImage2D glCompressedTexImage2D = 0;
+static proc_glCompressedTexImage3D glCompressedTexImage3D = 0;
+static proc_glCompressedTexSubImage1D glCompressedTexSubImage1D = 0;
+static proc_glCompressedTexSubImage2D glCompressedTexSubImage2D = 0;
+static proc_glCompressedTexSubImage3D glCompressedTexSubImage3D = 0;
+static proc_glCopyBufferSubData glCopyBufferSubData = 0;
+static proc_glCopyImageSubData glCopyImageSubData = 0;
+static proc_glCopyTexImage1D glCopyTexImage1D = 0;
+static proc_glCopyTexImage2D glCopyTexImage2D = 0;
+static proc_glCopyTexSubImage1D glCopyTexSubImage1D = 0;
+static proc_glCopyTexSubImage2D glCopyTexSubImage2D = 0;
+static proc_glCopyTexSubImage3D glCopyTexSubImage3D = 0;
+static proc_glCreateProgram glCreateProgram = 0;
+static proc_glCreateShader glCreateShader = 0;
+static proc_glCreateShaderProgramv glCreateShaderProgramv = 0;
+static proc_glCullFace glCullFace = 0;
+static proc_glDebugMessageCallback glDebugMessageCallback = 0;
+static proc_glDebugMessageControl glDebugMessageControl = 0;
+static proc_glDebugMessageInsert glDebugMessageInsert = 0;
+static proc_glDeleteBuffers glDeleteBuffers = 0;
+static proc_glDeleteFramebuffers glDeleteFramebuffers = 0;
+static proc_glDeleteProgram glDeleteProgram = 0;
+static proc_glDeleteProgramPipelines glDeleteProgramPipelines = 0;
+static proc_glDeleteQueries glDeleteQueries = 0;
+static proc_glDeleteRenderbuffers glDeleteRenderbuffers = 0;
+static proc_glDeleteSamplers glDeleteSamplers = 0;
+static proc_glDeleteShader glDeleteShader = 0;
+static proc_glDeleteSync glDeleteSync = 0;
+static proc_glDeleteTextures glDeleteTextures = 0;
+static proc_glDeleteTransformFeedbacks glDeleteTransformFeedbacks = 0;
+static proc_glDeleteVertexArrays glDeleteVertexArrays = 0;
+static proc_glDepthFunc glDepthFunc = 0;
+static proc_glDepthMask glDepthMask = 0;
+static proc_glDepthRange glDepthRange = 0;
+static proc_glDepthRangeArrayv glDepthRangeArrayv = 0;
+static proc_glDepthRangeIndexed glDepthRangeIndexed = 0;
+static proc_glDepthRangef glDepthRangef = 0;
+static proc_glDetachShader glDetachShader = 0;
+static proc_glDisable glDisable = 0;
+static proc_glDisableVertexAttribArray glDisableVertexAttribArray = 0;
+static proc_glDisablei glDisablei = 0;
+static proc_glDispatchCompute glDispatchCompute = 0;
+static proc_glDispatchComputeIndirect glDispatchComputeIndirect = 0;
+static proc_glDrawArrays glDrawArrays = 0;
+static proc_glDrawArraysIndirect glDrawArraysIndirect = 0;
+static proc_glDrawArraysInstanced glDrawArraysInstanced = 0;
+static proc_glDrawArraysInstancedBaseInstance glDrawArraysInstancedBaseInstance = 0;
+static proc_glDrawBuffer glDrawBuffer = 0;
+static proc_glDrawBuffers glDrawBuffers = 0;
+static proc_glDrawElements glDrawElements = 0;
+static proc_glDrawElementsBaseVertex glDrawElementsBaseVertex = 0;
+static proc_glDrawElementsIndirect glDrawElementsIndirect = 0;
+static proc_glDrawElementsInstanced glDrawElementsInstanced = 0;
+static proc_glDrawElementsInstancedBaseInstance glDrawElementsInstancedBaseInstance = 0;
+static proc_glDrawElementsInstancedBaseVertex glDrawElementsInstancedBaseVertex = 0;
+static proc_glDrawElementsInstancedBaseVertexBaseInstance glDrawElementsInstancedBaseVertexBaseInstance = 0;
+static proc_glDrawRangeElements glDrawRangeElements = 0;
+static proc_glDrawRangeElementsBaseVertex glDrawRangeElementsBaseVertex = 0;
+static proc_glDrawTransformFeedback glDrawTransformFeedback = 0;
+static proc_glDrawTransformFeedbackInstanced glDrawTransformFeedbackInstanced = 0;
+static proc_glDrawTransformFeedbackStream glDrawTransformFeedbackStream = 0;
+static proc_glDrawTransformFeedbackStreamInstanced glDrawTransformFeedbackStreamInstanced = 0;
+static proc_glEnable glEnable = 0;
+static proc_glEnableVertexAttribArray glEnableVertexAttribArray = 0;
+static proc_glEnablei glEnablei = 0;
+static proc_glEndConditionalRender glEndConditionalRender = 0;
+static proc_glEndQuery glEndQuery = 0;
+static proc_glEndQueryIndexed glEndQueryIndexed = 0;
+static proc_glEndTransformFeedback glEndTransformFeedback = 0;
+static proc_glFenceSync glFenceSync = 0;
+static proc_glFinish glFinish = 0;
+static proc_glFlush glFlush = 0;
+static proc_glFlushMappedBufferRange glFlushMappedBufferRange = 0;
+static proc_glFramebufferParameteri glFramebufferParameteri = 0;
+static proc_glFramebufferRenderbuffer glFramebufferRenderbuffer = 0;
+static proc_glFramebufferTexture glFramebufferTexture = 0;
+static proc_glFramebufferTexture1D glFramebufferTexture1D = 0;
+static proc_glFramebufferTexture2D glFramebufferTexture2D = 0;
+static proc_glFramebufferTexture3D glFramebufferTexture3D = 0;
+static proc_glFramebufferTextureLayer glFramebufferTextureLayer = 0;
+static proc_glFrontFace glFrontFace = 0;
+static proc_glGenBuffers glGenBuffers = 0;
+static proc_glGenFramebuffers glGenFramebuffers = 0;
+static proc_glGenProgramPipelines glGenProgramPipelines = 0;
+static proc_glGenQueries glGenQueries = 0;
+static proc_glGenRenderbuffers glGenRenderbuffers = 0;
+static proc_glGenSamplers glGenSamplers = 0;
+static proc_glGenTextures glGenTextures = 0;
+static proc_glGenTransformFeedbacks glGenTransformFeedbacks = 0;
+static proc_glGenVertexArrays glGenVertexArrays = 0;
+static proc_glGenerateMipmap glGenerateMipmap = 0;
+static proc_glGetActiveAtomicCounterBufferiv glGetActiveAtomicCounterBufferiv = 0;
+static proc_glGetActiveAttrib glGetActiveAttrib = 0;
+static proc_glGetActiveSubroutineName glGetActiveSubroutineName = 0;
+static proc_glGetActiveSubroutineUniformName glGetActiveSubroutineUniformName = 0;
+static proc_glGetActiveSubroutineUniformiv glGetActiveSubroutineUniformiv = 0;
+static proc_glGetActiveUniform glGetActiveUniform = 0;
+static proc_glGetActiveUniformBlockName glGetActiveUniformBlockName = 0;
+static proc_glGetActiveUniformBlockiv glGetActiveUniformBlockiv = 0;
+static proc_glGetActiveUniformName glGetActiveUniformName = 0;
+static proc_glGetActiveUniformsiv glGetActiveUniformsiv = 0;
+static proc_glGetAttachedShaders glGetAttachedShaders = 0;
+static proc_glGetAttribLocation glGetAttribLocation = 0;
+static proc_glGetBooleani_v glGetBooleani_v = 0;
+static proc_glGetBooleanv glGetBooleanv = 0;
+static proc_glGetBufferParameteri64v glGetBufferParameteri64v = 0;
+static proc_glGetBufferParameteriv glGetBufferParameteriv = 0;
+static proc_glGetBufferPointerv glGetBufferPointerv = 0;
+static proc_glGetBufferSubData glGetBufferSubData = 0;
+static proc_glGetCompressedTexImage glGetCompressedTexImage = 0;
+static proc_glGetDebugMessageLog glGetDebugMessageLog = 0;
+static proc_glGetDoublei_v glGetDoublei_v = 0;
+static proc_glGetDoublev glGetDoublev = 0;
+static proc_glGetError glGetError = 0;
+static proc_glGetFloati_v glGetFloati_v = 0;
+static proc_glGetFloatv glGetFloatv = 0;
+static proc_glGetFragDataIndex glGetFragDataIndex = 0;
+static proc_glGetFragDataLocation glGetFragDataLocation = 0;
+static proc_glGetFramebufferAttachmentParameteriv glGetFramebufferAttachmentParameteriv = 0;
+static proc_glGetFramebufferParameteriv glGetFramebufferParameteriv = 0;
+static proc_glGetInteger64i_v glGetInteger64i_v = 0;
+static proc_glGetInteger64v glGetInteger64v = 0;
+static proc_glGetIntegeri_v glGetIntegeri_v = 0;
+static proc_glGetIntegerv glGetIntegerv = 0;
+static proc_glGetInternalformati64v glGetInternalformati64v = 0;
+static proc_glGetInternalformativ glGetInternalformativ = 0;
+static proc_glGetMultisamplefv glGetMultisamplefv = 0;
+static proc_glGetObjectLabel glGetObjectLabel = 0;
+static proc_glGetObjectPtrLabel glGetObjectPtrLabel = 0;
+static proc_glGetPointerv glGetPointerv = 0;
+static proc_glGetProgramBinary glGetProgramBinary = 0;
+static proc_glGetProgramInfoLog glGetProgramInfoLog = 0;
+static proc_glGetProgramInterfaceiv glGetProgramInterfaceiv = 0;
+static proc_glGetProgramPipelineInfoLog glGetProgramPipelineInfoLog = 0;
+static proc_glGetProgramPipelineiv glGetProgramPipelineiv = 0;
+static proc_glGetProgramResourceIndex glGetProgramResourceIndex = 0;
+static proc_glGetProgramResourceLocation glGetProgramResourceLocation = 0;
+static proc_glGetProgramResourceLocationIndex glGetProgramResourceLocationIndex = 0;
+static proc_glGetProgramResourceName glGetProgramResourceName = 0;
+static proc_glGetProgramResourceiv glGetProgramResourceiv = 0;
+static proc_glGetProgramStageiv glGetProgramStageiv = 0;
+static proc_glGetProgramiv glGetProgramiv = 0;
+static proc_glGetQueryIndexediv glGetQueryIndexediv = 0;
+static proc_glGetQueryObjecti64v glGetQueryObjecti64v = 0;
+static proc_glGetQueryObjectiv glGetQueryObjectiv = 0;
+static proc_glGetQueryObjectui64v glGetQueryObjectui64v = 0;
+static proc_glGetQueryObjectuiv glGetQueryObjectuiv = 0;
+static proc_glGetQueryiv glGetQueryiv = 0;
+static proc_glGetRenderbufferParameteriv glGetRenderbufferParameteriv = 0;
+static proc_glGetSamplerParameterIiv glGetSamplerParameterIiv = 0;
+static proc_glGetSamplerParameterIuiv glGetSamplerParameterIuiv = 0;
+static proc_glGetSamplerParameterfv glGetSamplerParameterfv = 0;
+static proc_glGetSamplerParameteriv glGetSamplerParameteriv = 0;
+static proc_glGetShaderInfoLog glGetShaderInfoLog = 0;
+static proc_glGetShaderPrecisionFormat glGetShaderPrecisionFormat = 0;
+static proc_glGetShaderSource glGetShaderSource = 0;
+static proc_glGetShaderiv glGetShaderiv = 0;
+static proc_glGetString glGetString = 0;
+static proc_glGetStringi glGetStringi = 0;
+static proc_glGetSubroutineIndex glGetSubroutineIndex = 0;
+static proc_glGetSubroutineUniformLocation glGetSubroutineUniformLocation = 0;
+static proc_glGetSynciv glGetSynciv = 0;
+static proc_glGetTexImage glGetTexImage = 0;
+static proc_glGetTexLevelParameterfv glGetTexLevelParameterfv = 0;
+static proc_glGetTexLevelParameteriv glGetTexLevelParameteriv = 0;
+static proc_glGetTexParameterIiv glGetTexParameterIiv = 0;
+static proc_glGetTexParameterIuiv glGetTexParameterIuiv = 0;
+static proc_glGetTexParameterfv glGetTexParameterfv = 0;
+static proc_glGetTexParameteriv glGetTexParameteriv = 0;
+static proc_glGetTransformFeedbackVarying glGetTransformFeedbackVarying = 0;
+static proc_glGetUniformBlockIndex glGetUniformBlockIndex = 0;
+static proc_glGetUniformIndices glGetUniformIndices = 0;
+static proc_glGetUniformLocation glGetUniformLocation = 0;
+static proc_glGetUniformSubroutineuiv glGetUniformSubroutineuiv = 0;
+static proc_glGetUniformdv glGetUniformdv = 0;
+static proc_glGetUniformfv glGetUniformfv = 0;
+static proc_glGetUniformiv glGetUniformiv = 0;
+static proc_glGetUniformuiv glGetUniformuiv = 0;
+static proc_glGetVertexAttribIiv glGetVertexAttribIiv = 0;
+static proc_glGetVertexAttribIuiv glGetVertexAttribIuiv = 0;
+static proc_glGetVertexAttribLdv glGetVertexAttribLdv = 0;
+static proc_glGetVertexAttribPointerv glGetVertexAttribPointerv = 0;
+static proc_glGetVertexAttribdv glGetVertexAttribdv = 0;
+static proc_glGetVertexAttribfv glGetVertexAttribfv = 0;
+static proc_glGetVertexAttribiv glGetVertexAttribiv = 0;
+static proc_glHint glHint = 0;
+static proc_glInvalidateBufferData glInvalidateBufferData = 0;
+static proc_glInvalidateBufferSubData glInvalidateBufferSubData = 0;
+static proc_glInvalidateFramebuffer glInvalidateFramebuffer = 0;
+static proc_glInvalidateSubFramebuffer glInvalidateSubFramebuffer = 0;
+static proc_glInvalidateTexImage glInvalidateTexImage = 0;
+static proc_glInvalidateTexSubImage glInvalidateTexSubImage = 0;
+static proc_glIsBuffer glIsBuffer = 0;
+static proc_glIsEnabled glIsEnabled = 0;
+static proc_glIsEnabledi glIsEnabledi = 0;
+static proc_glIsFramebuffer glIsFramebuffer = 0;
+static proc_glIsProgram glIsProgram = 0;
+static proc_glIsProgramPipeline glIsProgramPipeline = 0;
+static proc_glIsQuery glIsQuery = 0;
+static proc_glIsRenderbuffer glIsRenderbuffer = 0;
+static proc_glIsSampler glIsSampler = 0;
+static proc_glIsShader glIsShader = 0;
+static proc_glIsSync glIsSync = 0;
+static proc_glIsTexture glIsTexture = 0;
+static proc_glIsTransformFeedback glIsTransformFeedback = 0;
+static proc_glIsVertexArray glIsVertexArray = 0;
+static proc_glLineWidth glLineWidth = 0;
+static proc_glLinkProgram glLinkProgram = 0;
+static proc_glLogicOp glLogicOp = 0;
+static proc_glMapBuffer glMapBuffer = 0;
+static proc_glMapBufferRange glMapBufferRange = 0;
+static proc_glMemoryBarrier glMemoryBarrier = 0;
+static proc_glMinSampleShading glMinSampleShading = 0;
+static proc_glMultiDrawArrays glMultiDrawArrays = 0;
+static proc_glMultiDrawArraysIndirect glMultiDrawArraysIndirect = 0;
+static proc_glMultiDrawElements glMultiDrawElements = 0;
+static proc_glMultiDrawElementsBaseVertex glMultiDrawElementsBaseVertex = 0;
+static proc_glMultiDrawElementsIndirect glMultiDrawElementsIndirect = 0;
+static proc_glObjectLabel glObjectLabel = 0;
+static proc_glObjectPtrLabel glObjectPtrLabel = 0;
+static proc_glPatchParameterfv glPatchParameterfv = 0;
+static proc_glPatchParameteri glPatchParameteri = 0;
+static proc_glPauseTransformFeedback glPauseTransformFeedback = 0;
+static proc_glPixelStoref glPixelStoref = 0;
+static proc_glPixelStorei glPixelStorei = 0;
+static proc_glPointParameterf glPointParameterf = 0;
+static proc_glPointParameterfv glPointParameterfv = 0;
+static proc_glPointParameteri glPointParameteri = 0;
+static proc_glPointParameteriv glPointParameteriv = 0;
+static proc_glPointSize glPointSize = 0;
+static proc_glPolygonMode glPolygonMode = 0;
+static proc_glPolygonOffset glPolygonOffset = 0;
+static proc_glPopDebugGroup glPopDebugGroup = 0;
+static proc_glPrimitiveRestartIndex glPrimitiveRestartIndex = 0;
+static proc_glProgramBinary glProgramBinary = 0;
+static proc_glProgramParameteri glProgramParameteri = 0;
+static proc_glProgramUniform1d glProgramUniform1d = 0;
+static proc_glProgramUniform1dv glProgramUniform1dv = 0;
+static proc_glProgramUniform1f glProgramUniform1f = 0;
+static proc_glProgramUniform1fv glProgramUniform1fv = 0;
+static proc_glProgramUniform1i glProgramUniform1i = 0;
+static proc_glProgramUniform1iv glProgramUniform1iv = 0;
+static proc_glProgramUniform1ui glProgramUniform1ui = 0;
+static proc_glProgramUniform1uiv glProgramUniform1uiv = 0;
+static proc_glProgramUniform2d glProgramUniform2d = 0;
+static proc_glProgramUniform2dv glProgramUniform2dv = 0;
+static proc_glProgramUniform2f glProgramUniform2f = 0;
+static proc_glProgramUniform2fv glProgramUniform2fv = 0;
+static proc_glProgramUniform2i glProgramUniform2i = 0;
+static proc_glProgramUniform2iv glProgramUniform2iv = 0;
+static proc_glProgramUniform2ui glProgramUniform2ui = 0;
+static proc_glProgramUniform2uiv glProgramUniform2uiv = 0;
+static proc_glProgramUniform3d glProgramUniform3d = 0;
+static proc_glProgramUniform3dv glProgramUniform3dv = 0;
+static proc_glProgramUniform3f glProgramUniform3f = 0;
+static proc_glProgramUniform3fv glProgramUniform3fv = 0;
+static proc_glProgramUniform3i glProgramUniform3i = 0;
+static proc_glProgramUniform3iv glProgramUniform3iv = 0;
+static proc_glProgramUniform3ui glProgramUniform3ui = 0;
+static proc_glProgramUniform3uiv glProgramUniform3uiv = 0;
+static proc_glProgramUniform4d glProgramUniform4d = 0;
+static proc_glProgramUniform4dv glProgramUniform4dv = 0;
+static proc_glProgramUniform4f glProgramUniform4f = 0;
+static proc_glProgramUniform4fv glProgramUniform4fv = 0;
+static proc_glProgramUniform4i glProgramUniform4i = 0;
+static proc_glProgramUniform4iv glProgramUniform4iv = 0;
+static proc_glProgramUniform4ui glProgramUniform4ui = 0;
+static proc_glProgramUniform4uiv glProgramUniform4uiv = 0;
+static proc_glProgramUniformMatrix2dv glProgramUniformMatrix2dv = 0;
+static proc_glProgramUniformMatrix2fv glProgramUniformMatrix2fv = 0;
+static proc_glProgramUniformMatrix2x3dv glProgramUniformMatrix2x3dv = 0;
+static proc_glProgramUniformMatrix2x3fv glProgramUniformMatrix2x3fv = 0;
+static proc_glProgramUniformMatrix2x4dv glProgramUniformMatrix2x4dv = 0;
+static proc_glProgramUniformMatrix2x4fv glProgramUniformMatrix2x4fv = 0;
+static proc_glProgramUniformMatrix3dv glProgramUniformMatrix3dv = 0;
+static proc_glProgramUniformMatrix3fv glProgramUniformMatrix3fv = 0;
+static proc_glProgramUniformMatrix3x2dv glProgramUniformMatrix3x2dv = 0;
+static proc_glProgramUniformMatrix3x2fv glProgramUniformMatrix3x2fv = 0;
+static proc_glProgramUniformMatrix3x4dv glProgramUniformMatrix3x4dv = 0;
+static proc_glProgramUniformMatrix3x4fv glProgramUniformMatrix3x4fv = 0;
+static proc_glProgramUniformMatrix4dv glProgramUniformMatrix4dv = 0;
+static proc_glProgramUniformMatrix4fv glProgramUniformMatrix4fv = 0;
+static proc_glProgramUniformMatrix4x2dv glProgramUniformMatrix4x2dv = 0;
+static proc_glProgramUniformMatrix4x2fv glProgramUniformMatrix4x2fv = 0;
+static proc_glProgramUniformMatrix4x3dv glProgramUniformMatrix4x3dv = 0;
+static proc_glProgramUniformMatrix4x3fv glProgramUniformMatrix4x3fv = 0;
+static proc_glProvokingVertex glProvokingVertex = 0;
+static proc_glPushDebugGroup glPushDebugGroup = 0;
+static proc_glQueryCounter glQueryCounter = 0;
+static proc_glReadBuffer glReadBuffer = 0;
+static proc_glReadPixels glReadPixels = 0;
+static proc_glReleaseShaderCompiler glReleaseShaderCompiler = 0;
+static proc_glRenderbufferStorage glRenderbufferStorage = 0;
+static proc_glRenderbufferStorageMultisample glRenderbufferStorageMultisample = 0;
+static proc_glResumeTransformFeedback glResumeTransformFeedback = 0;
+static proc_glSampleCoverage glSampleCoverage = 0;
+static proc_glSampleMaski glSampleMaski = 0;
+static proc_glSamplerParameterIiv glSamplerParameterIiv = 0;
+static proc_glSamplerParameterIuiv glSamplerParameterIuiv = 0;
+static proc_glSamplerParameterf glSamplerParameterf = 0;
+static proc_glSamplerParameterfv glSamplerParameterfv = 0;
+static proc_glSamplerParameteri glSamplerParameteri = 0;
+static proc_glSamplerParameteriv glSamplerParameteriv = 0;
+static proc_glScissor glScissor = 0;
+static proc_glScissorArrayv glScissorArrayv = 0;
+static proc_glScissorIndexed glScissorIndexed = 0;
+static proc_glScissorIndexedv glScissorIndexedv = 0;
+static proc_glShaderBinary glShaderBinary = 0;
+static proc_glShaderSource glShaderSource = 0;
+static proc_glShaderStorageBlockBinding glShaderStorageBlockBinding = 0;
+static proc_glStencilFunc glStencilFunc = 0;
+static proc_glStencilFuncSeparate glStencilFuncSeparate = 0;
+static proc_glStencilMask glStencilMask = 0;
+static proc_glStencilMaskSeparate glStencilMaskSeparate = 0;
+static proc_glStencilOp glStencilOp = 0;
+static proc_glStencilOpSeparate glStencilOpSeparate = 0;
+static proc_glTexBuffer glTexBuffer = 0;
+static proc_glTexBufferRange glTexBufferRange = 0;
+static proc_glTexImage1D glTexImage1D = 0;
+static proc_glTexImage2D glTexImage2D = 0;
+static proc_glTexImage2DMultisample glTexImage2DMultisample = 0;
+static proc_glTexImage3D glTexImage3D = 0;
+static proc_glTexImage3DMultisample glTexImage3DMultisample = 0;
+static proc_glTexParameterIiv glTexParameterIiv = 0;
+static proc_glTexParameterIuiv glTexParameterIuiv = 0;
+static proc_glTexParameterf glTexParameterf = 0;
+static proc_glTexParameterfv glTexParameterfv = 0;
+static proc_glTexParameteri glTexParameteri = 0;
+static proc_glTexParameteriv glTexParameteriv = 0;
+static proc_glTexStorage1D glTexStorage1D = 0;
+static proc_glTexStorage2D glTexStorage2D = 0;
+static proc_glTexStorage2DMultisample glTexStorage2DMultisample = 0;
+static proc_glTexStorage3D glTexStorage3D = 0;
+static proc_glTexStorage3DMultisample glTexStorage3DMultisample = 0;
+static proc_glTexSubImage1D glTexSubImage1D = 0;
+static proc_glTexSubImage2D glTexSubImage2D = 0;
+static proc_glTexSubImage3D glTexSubImage3D = 0;
+static proc_glTextureView glTextureView = 0;
+static proc_glTransformFeedbackVaryings glTransformFeedbackVaryings = 0;
+static proc_glUniform1d glUniform1d = 0;
+static proc_glUniform1dv glUniform1dv = 0;
+static proc_glUniform1f glUniform1f = 0;
+static proc_glUniform1fv glUniform1fv = 0;
+static proc_glUniform1i glUniform1i = 0;
+static proc_glUniform1iv glUniform1iv = 0;
+static proc_glUniform1ui glUniform1ui = 0;
+static proc_glUniform1uiv glUniform1uiv = 0;
+static proc_glUniform2d glUniform2d = 0;
+static proc_glUniform2dv glUniform2dv = 0;
+static proc_glUniform2f glUniform2f = 0;
+static proc_glUniform2fv glUniform2fv = 0;
+static proc_glUniform2i glUniform2i = 0;
+static proc_glUniform2iv glUniform2iv = 0;
+static proc_glUniform2ui glUniform2ui = 0;
+static proc_glUniform2uiv glUniform2uiv = 0;
+static proc_glUniform3d glUniform3d = 0;
+static proc_glUniform3dv glUniform3dv = 0;
+static proc_glUniform3f glUniform3f = 0;
+static proc_glUniform3fv glUniform3fv = 0;
+static proc_glUniform3i glUniform3i = 0;
+static proc_glUniform3iv glUniform3iv = 0;
+static proc_glUniform3ui glUniform3ui = 0;
+static proc_glUniform3uiv glUniform3uiv = 0;
+static proc_glUniform4d glUniform4d = 0;
+static proc_glUniform4dv glUniform4dv = 0;
+static proc_glUniform4f glUniform4f = 0;
+static proc_glUniform4fv glUniform4fv = 0;
+static proc_glUniform4i glUniform4i = 0;
+static proc_glUniform4iv glUniform4iv = 0;
+static proc_glUniform4ui glUniform4ui = 0;
+static proc_glUniform4uiv glUniform4uiv = 0;
+static proc_glUniformBlockBinding glUniformBlockBinding = 0;
+static proc_glUniformMatrix2dv glUniformMatrix2dv = 0;
+static proc_glUniformMatrix2fv glUniformMatrix2fv = 0;
+static proc_glUniformMatrix2x3dv glUniformMatrix2x3dv = 0;
+static proc_glUniformMatrix2x3fv glUniformMatrix2x3fv = 0;
+static proc_glUniformMatrix2x4dv glUniformMatrix2x4dv = 0;
+static proc_glUniformMatrix2x4fv glUniformMatrix2x4fv = 0;
+static proc_glUniformMatrix3dv glUniformMatrix3dv = 0;
+static proc_glUniformMatrix3fv glUniformMatrix3fv = 0;
+static proc_glUniformMatrix3x2dv glUniformMatrix3x2dv = 0;
+static proc_glUniformMatrix3x2fv glUniformMatrix3x2fv = 0;
+static proc_glUniformMatrix3x4dv glUniformMatrix3x4dv = 0;
+static proc_glUniformMatrix3x4fv glUniformMatrix3x4fv = 0;
+static proc_glUniformMatrix4dv glUniformMatrix4dv = 0;
+static proc_glUniformMatrix4fv glUniformMatrix4fv = 0;
+static proc_glUniformMatrix4x2dv glUniformMatrix4x2dv = 0;
+static proc_glUniformMatrix4x2fv glUniformMatrix4x2fv = 0;
+static proc_glUniformMatrix4x3dv glUniformMatrix4x3dv = 0;
+static proc_glUniformMatrix4x3fv glUniformMatrix4x3fv = 0;
+static proc_glUniformSubroutinesuiv glUniformSubroutinesuiv = 0;
+static proc_glUnmapBuffer glUnmapBuffer = 0;
+static proc_glUseProgram glUseProgram = 0;
+static proc_glUseProgramStages glUseProgramStages = 0;
+static proc_glValidateProgram glValidateProgram = 0;
+static proc_glValidateProgramPipeline glValidateProgramPipeline = 0;
+static proc_glVertexAttrib1d glVertexAttrib1d = 0;
+static proc_glVertexAttrib1dv glVertexAttrib1dv = 0;
+static proc_glVertexAttrib1f glVertexAttrib1f = 0;
+static proc_glVertexAttrib1fv glVertexAttrib1fv = 0;
+static proc_glVertexAttrib1s glVertexAttrib1s = 0;
+static proc_glVertexAttrib1sv glVertexAttrib1sv = 0;
+static proc_glVertexAttrib2d glVertexAttrib2d = 0;
+static proc_glVertexAttrib2dv glVertexAttrib2dv = 0;
+static proc_glVertexAttrib2f glVertexAttrib2f = 0;
+static proc_glVertexAttrib2fv glVertexAttrib2fv = 0;
+static proc_glVertexAttrib2s glVertexAttrib2s = 0;
+static proc_glVertexAttrib2sv glVertexAttrib2sv = 0;
+static proc_glVertexAttrib3d glVertexAttrib3d = 0;
+static proc_glVertexAttrib3dv glVertexAttrib3dv = 0;
+static proc_glVertexAttrib3f glVertexAttrib3f = 0;
+static proc_glVertexAttrib3fv glVertexAttrib3fv = 0;
+static proc_glVertexAttrib3s glVertexAttrib3s = 0;
+static proc_glVertexAttrib3sv glVertexAttrib3sv = 0;
+static proc_glVertexAttrib4Nbv glVertexAttrib4Nbv = 0;
+static proc_glVertexAttrib4Niv glVertexAttrib4Niv = 0;
+static proc_glVertexAttrib4Nsv glVertexAttrib4Nsv = 0;
+static proc_glVertexAttrib4Nub glVertexAttrib4Nub = 0;
+static proc_glVertexAttrib4Nubv glVertexAttrib4Nubv = 0;
+static proc_glVertexAttrib4Nuiv glVertexAttrib4Nuiv = 0;
+static proc_glVertexAttrib4Nusv glVertexAttrib4Nusv = 0;
+static proc_glVertexAttrib4bv glVertexAttrib4bv = 0;
+static proc_glVertexAttrib4d glVertexAttrib4d = 0;
+static proc_glVertexAttrib4dv glVertexAttrib4dv = 0;
+static proc_glVertexAttrib4f glVertexAttrib4f = 0;
+static proc_glVertexAttrib4fv glVertexAttrib4fv = 0;
+static proc_glVertexAttrib4iv glVertexAttrib4iv = 0;
+static proc_glVertexAttrib4s glVertexAttrib4s = 0;
+static proc_glVertexAttrib4sv glVertexAttrib4sv = 0;
+static proc_glVertexAttrib4ubv glVertexAttrib4ubv = 0;
+static proc_glVertexAttrib4uiv glVertexAttrib4uiv = 0;
+static proc_glVertexAttrib4usv glVertexAttrib4usv = 0;
+static proc_glVertexAttribBinding glVertexAttribBinding = 0;
+static proc_glVertexAttribDivisor glVertexAttribDivisor = 0;
+static proc_glVertexAttribFormat glVertexAttribFormat = 0;
+static proc_glVertexAttribI1i glVertexAttribI1i = 0;
+static proc_glVertexAttribI1iv glVertexAttribI1iv = 0;
+static proc_glVertexAttribI1ui glVertexAttribI1ui = 0;
+static proc_glVertexAttribI1uiv glVertexAttribI1uiv = 0;
+static proc_glVertexAttribI2i glVertexAttribI2i = 0;
+static proc_glVertexAttribI2iv glVertexAttribI2iv = 0;
+static proc_glVertexAttribI2ui glVertexAttribI2ui = 0;
+static proc_glVertexAttribI2uiv glVertexAttribI2uiv = 0;
+static proc_glVertexAttribI3i glVertexAttribI3i = 0;
+static proc_glVertexAttribI3iv glVertexAttribI3iv = 0;
+static proc_glVertexAttribI3ui glVertexAttribI3ui = 0;
+static proc_glVertexAttribI3uiv glVertexAttribI3uiv = 0;
+static proc_glVertexAttribI4bv glVertexAttribI4bv = 0;
+static proc_glVertexAttribI4i glVertexAttribI4i = 0;
+static proc_glVertexAttribI4iv glVertexAttribI4iv = 0;
+static proc_glVertexAttribI4sv glVertexAttribI4sv = 0;
+static proc_glVertexAttribI4ubv glVertexAttribI4ubv = 0;
+static proc_glVertexAttribI4ui glVertexAttribI4ui = 0;
+static proc_glVertexAttribI4uiv glVertexAttribI4uiv = 0;
+static proc_glVertexAttribI4usv glVertexAttribI4usv = 0;
+static proc_glVertexAttribIFormat glVertexAttribIFormat = 0;
+static proc_glVertexAttribIPointer glVertexAttribIPointer = 0;
+static proc_glVertexAttribL1d glVertexAttribL1d = 0;
+static proc_glVertexAttribL1dv glVertexAttribL1dv = 0;
+static proc_glVertexAttribL2d glVertexAttribL2d = 0;
+static proc_glVertexAttribL2dv glVertexAttribL2dv = 0;
+static proc_glVertexAttribL3d glVertexAttribL3d = 0;
+static proc_glVertexAttribL3dv glVertexAttribL3dv = 0;
+static proc_glVertexAttribL4d glVertexAttribL4d = 0;
+static proc_glVertexAttribL4dv glVertexAttribL4dv = 0;
+static proc_glVertexAttribLFormat glVertexAttribLFormat = 0;
+static proc_glVertexAttribLPointer glVertexAttribLPointer = 0;
+static proc_glVertexAttribP1ui glVertexAttribP1ui = 0;
+static proc_glVertexAttribP1uiv glVertexAttribP1uiv = 0;
+static proc_glVertexAttribP2ui glVertexAttribP2ui = 0;
+static proc_glVertexAttribP2uiv glVertexAttribP2uiv = 0;
+static proc_glVertexAttribP3ui glVertexAttribP3ui = 0;
+static proc_glVertexAttribP3uiv glVertexAttribP3uiv = 0;
+static proc_glVertexAttribP4ui glVertexAttribP4ui = 0;
+static proc_glVertexAttribP4uiv glVertexAttribP4uiv = 0;
+static proc_glVertexAttribPointer glVertexAttribPointer = 0;
+static proc_glVertexBindingDivisor glVertexBindingDivisor = 0;
+static proc_glViewport glViewport = 0;
+static proc_glViewportArrayv glViewportArrayv = 0;
+static proc_glViewportIndexedf glViewportIndexedf = 0;
+static proc_glViewportIndexedfv glViewportIndexedfv = 0;
+static proc_glWaitSync glWaitSync = 0;
 static GLFWwindow* main_window;
-static float32 main_window_width = 1600/*constant*/;
-static float32 main_window_height = 900/*constant*/;
+static float32 main_window_width = 1600;
+static float32 main_window_height = 900;
 static float32 main_window_aspect;
+static Shader* active_shader;
 static Shader immediate_shader;
 static DrawBuffers immediate_buffer;
 static Texture2D text_atlas;
-static vertex* immediate_vertices;
+static vertex2D* immediate_vertices;
 static uint32* immediate_indices;
+static char* num_str;
 
 // Implementations
 static void init_gizmos() {
-    debug_lines_vertices = list_create((uint32)sizeof(vertex));
+    debug_lines_vertices = list_create((uint32)sizeof(vertex2D));
 }
 static void dispatch_gizmos() {
 }
@@ -1720,8 +1738,8 @@ static void uniform_entity_scale(float32 scale) {
     glUniform1f(glGetUniformLocation(shader.gl_handle, "entity_scale"), scale);
 }
 static vec2 rotate_vec(vec2 dir, float32 angle) {
-    float32 c = cosf(angle)/*not constant*/;
-    float32 s = sinf(angle)/*not constant*/;
+    float32 c = cosf(angle);
+    float32 s = sinf(angle);
     vec2 res;
     res.x = ((c * dir.x) + (s * dir.y));
     res.y = ((-s * dir.x) + (c * dir.y));
@@ -1732,7 +1750,7 @@ static Entity* appendEntity(DrawBuffers db) {
         printf("%s", "Failed to append entity. Max limit reached.");
         return 0;
     }
-    Entity* res = &entities[entitiesLength++]/*not constant*/;
+    Entity* res = &entities[entitiesLength++];
     res->transform.pos = make_vec1(0, 0);
     res->transform.scale = 1;
     res->transform.rot = 0;
@@ -1741,20 +1759,20 @@ static Entity* appendEntity(DrawBuffers db) {
     return res;
 }
 static DrawBuffers genCircle(int32 res, float32 radius) {
-    uint32 vertsCount = ((uint32)res + 1)/*not constant*/;
-    vertex verts[vertsCount];
-    verts[0].x = 0;
-    verts[0].y = 0;
+    uint32 vertsCount = ((uint32)res + 1);
+    vertex2D* verts = malloc((vertsCount * sizeof(vertex2D)));
+    verts[0].pos.x = 0;
+    verts[0].pos.y = 0;
     for (int32 i = 1; i < (res + 1); i++) {
-        float32 angle = ((i * (3.141593 * 2.000000)) / res)/*not constant*/;
-        verts[i].x = (cosf(angle) * radius);
-        verts[i].y = (sinf(angle) * radius);
+        float32 angle = ((i * (3.141593 * 2.000000)) / res);
+        verts[i].pos.x = (cosf(angle) * radius);
+        verts[i].pos.y = (sinf(angle) * radius);
         verts[i].color = (Color){255, 255, 255, 255};
     }
-    uint32 indsCount = (((uint32)res) * 3)/*not constant*/;
-    uint32 inds[indsCount];
-    uint32 i = 0/*constant*/;
-    uint32 v = 1/*constant*/;
+    uint32 indsCount = (((uint32)res) * 3);
+    uint32* inds = malloc((indsCount * sizeof(uint32)));
+    uint32 i = 0;
+    uint32 v = 1;
     while (i < indsCount) {
         inds[i] = 0;
         inds[(i + 1)] = v++;
@@ -1762,8 +1780,10 @@ static DrawBuffers genCircle(int32 res, float32 radius) {
         i += 3;
     }
     inds[(i - 1)] = 1;
-    DrawBuffers db = create_draw_buffers()/*not constant*/;
+    DrawBuffers db = create_draw_buffers2();
     update_buffers(&db, verts, vertsCount, inds, indsCount);
+    free(verts);
+    free(inds);
     return db;
 }
 static Planet genPlanet(float32 radius, float32 dist, float32 year) {
@@ -1784,23 +1804,23 @@ static void drawPlanet(Planet* planet) {
 static void updateEntity(Entity* entity) {
     entity->transform.pos = add1(entity->transform.pos, entity->vel);
     for (int32 i = 0; i < 16; i++) {
-        Planet* planet = &planets[i]/*not constant*/;
-        vec2 diff = sub1(entity->transform.pos, planet->pos)/*not constant*/;
-        vec2 normal = normalize1(diff)/*not constant*/;
-        float32 intersection = (length1(diff) - planet->radius)/*not constant*/;
-        float32 planetArea = ((3.141593 * planet->radius) * planet->radius)/*not constant*/;
-        float32 planetMass = planetArea/*not constant*/;
-        vec2 gravity = mul2(normal, ((planetMass / sqlength1(diff)) * -0.000003))/*not constant*/;
+        Planet* planet = &planets[i];
+        vec2 diff = sub1(entity->transform.pos, planet->pos);
+        vec2 normal = normalize1(diff);
+        float32 intersection = (length1(diff) - planet->radius);
+        float32 planetArea = ((3.141593 * planet->radius) * planet->radius);
+        float32 planetMass = planetArea;
+        vec2 gravity = mul2(normal, ((planetMass / sqlength1(diff)) * -0.000003));
         if (intersection <= 0.000000) {
-            vec2 correction = mul2(normal, -intersection)/*not constant*/;
+            vec2 correction = mul2(normal, -intersection);
             entity->transform.pos = add1(entity->transform.pos, correction);
             entity->vel = add1(entity->vel, mul2(normal, -dot1(entity->vel, normal)));
         }
     }
     Intersection intersection;
     if (point_intersects(entity->transform.pos, &voxelGrid, &intersection)) {
-        vec2 normal = intersection.surface_normal/*not constant*/;
-        vec2 correction = mul2(normal, -intersection.distance)/*not constant*/;
+        vec2 normal = intersection.surface_normal;
+        vec2 correction = mul2(normal, -intersection.distance);
         entity->transform.pos = add1(entity->transform.pos, correction);
         entity->vel = add1(entity->vel, mul2(normal, -dot1(entity->vel, normal)));
     }
@@ -1812,14 +1832,14 @@ static vec2 getMouseWorldCoord() {
     int32 w;
     int32 h;
     glfwGetFramebufferSize(main_window, &w, &h);
-    float32 x = ((((float32)cx / w) * 2) - 1)/*not constant*/;
-    float32 y = -((((float32)cy / h) * 2) - 1)/*not constant*/;
+    float32 x = ((((float32)cx / w) * 2) - 1);
+    float32 y = -((((float32)cy / h) * 2) - 1);
     x *= ((float32)w / h);
-    vec2 res = local2world2(camera, x, y)/*not constant*/;
+    vec2 res = local2world2(camera, x, y);
     return res;
 }
 static void mouse_scrollCallback(GLFWwindow* w, float64 x, float64 y) {
-    float32 s = (float32)y/*not constant*/;
+    float32 s = (float32)y;
     if (key2(341)) {
         voxel_edit_radius += (s * 0.100000);
         voxel_edit_radius = clamp2(voxel_edit_radius, 0.100000, 100);
@@ -1829,16 +1849,16 @@ static void mouse_scrollCallback(GLFWwindow* w, float64 x, float64 y) {
     }
 }
 static Texture2D load_texture(char* file_name) {
-    Image image = load_bitmap(file_name)/*not constant*/;
-    Texture2D tex = create_texture2D(image)/*not constant*/;
+    Image image = load_bitmap(file_name);
+    Texture2D tex = create_texture2D(image);
     set_filter(tex, 9728);
     free(image.pixels);
     return tex;
 }
 static void load() {
     {
-        char* f = fileread1("shaders/frag.glsl")/*not constant*/;
-        char* v = fileread1("shaders/vert.glsl")/*not constant*/;
+        char* f = fileread1("shaders/frag.glsl");
+        char* v = fileread1("shaders/vert.glsl");
         shader = create_shader(f, v);
         free(f);
         free(v);
@@ -1852,10 +1872,10 @@ static void load() {
         image.pixels = malloc(((sizeof(Color) * 64) * 64));
         for (int32 x = 0; x < 64; x++) {
             for (int32 y = 0; y < 64; y++) {
-                float32 d = 10.000000/*constant*/;
-                float32 g = gnoise((x / d), (y / d))/*not constant*/;
-                float32 v = ((g + 1.000000) / 2.000000)/*not constant*/;
-                uint8 c = (uint8)(v * 255)/*not constant*/;
+                float32 d = 10.000000;
+                float32 g = gnoise((x / d), (y / d));
+                float32 v = ((g + 1.000000) / 2.000000);
+                uint8 c = (uint8)(v * 255);
                 image.pixels[((x * 64) + y)] = (Color) {c, c, c, 255};
             }
         }
@@ -1869,8 +1889,8 @@ static void load() {
     entities = malloc((sizeof(Entity) * 256));
     planets = malloc((sizeof(Planet) * 16));
     for (int32 i = 0; i < 16; i++) {
-        float32 r = (20.000000 + random((int32)i))/*not constant*/;
-        Planet p = genPlanet(r, (70.000000 + ((r * 30.000000) * i)), (100.000000 + (20.000000 * random(((2 * i) + 100)))))/*not constant*/;
+        float32 r = (20.000000 + random((int32)i));
+        Planet p = genPlanet(r, (70.000000 + ((r * 30.000000) * i)), (100.000000 + (20.000000 * random(((2 * i) + 100)))));
         planets[i] = p;
     }
     player = appendEntity(genCircle(4, 0.100000));
@@ -1879,19 +1899,19 @@ static void load() {
     voxelMesh_circle = genCircle(360, 1);
 }
 static VoxelGrid generatePlanet() {
-    VoxelGrid grid = createVoxelGrid(100)/*not constant*/;
+    VoxelGrid grid = createVoxelGrid(100);
     grid.transform.scale = 1;
-    float32 half = ((float32)grid.res / 2)/*not constant*/;
+    float32 half = ((float32)grid.res / 2);
     for (uint32 x = 0; x < grid.res; x++) {
         for (uint32 y = 0; y < grid.res; y++) {
-            float32 xf = ((float32)x - half)/*not constant*/;
-            float32 yf = ((float32)y - half)/*not constant*/;
-            float32 len = sqrtf(((xf * xf) + (yf * yf)))/*not constant*/;
+            float32 xf = ((float32)x - half);
+            float32 yf = ((float32)y - half);
+            float32 len = sqrtf(((xf * xf) + (yf * yf)));
             /* local constant */
-            float32 h = ((gnoise((100 + ((xf / len) * 4.000000)), (100 + ((yf / len) * 4.000000))) + 1.000000) / 2.000000)/*not constant*/;
+            float32 h = ((gnoise((100 + ((xf / len) * 4.000000)), (100 + ((yf / len) * 4.000000))) + 1.000000) / 2.000000);
             h *= 10;
             h += 30;
-            uint32 i = ((x * grid.res) + y)/*not constant*/;
+            uint32 i = ((x * grid.res) + y);
             grid.data[i] = clamp2((h - len), 0, 1);
         }
     }
@@ -1907,18 +1927,18 @@ static void on_key_input(GLFWwindow* window, int32 key, int32 scancode, int32 ac
         }
     }
 }
-int32 main() {
+int32 __main() {
     grax_init();
     glfwSetKeyCallback(main_window, on_key_input);
     load();
     {
-        char* version = (char*)glGetString(7938)/*not constant*/;
+        char* version = (char*)glGetString(7938);
         printf("%s%s%s", "OpenGL version: ", version, "\n");
     }
     glClearColor(0.050000, 0.050000, 0.050000, 1.000000);
     glLineWidth(10);
     while (grax_loop()) {
-        use(shader);
+        use(&shader);
         bind(random_texture);
         vec2 wasd;
         wasd.x = 0;
@@ -1931,22 +1951,22 @@ int32 main() {
             player->vel.x = 0.000000;
             player->vel.y = 0.000000;
         }
-        float32 c = cosf(player->transform.rot)/*not constant*/;
-        float32 s = sinf(player->transform.rot)/*not constant*/;
-        vec2 dir = make_vec1(dot1(make_vec1(c, s), wasd), dot1(make_vec1(-s, c), wasd))/*not constant*/;
+        float32 c = cosf(player->transform.rot);
+        float32 s = sinf(player->transform.rot);
+        vec2 dir = make_vec1(dot1(make_vec1(c, s), wasd), dot1(make_vec1(-s, c), wasd));
         player->vel = add1(player->vel, mul2(dir, 0.010000));
-        float32 time = (float32)glfwGetTime()/*not constant*/;
+        float32 time = (float32)glfwGetTime();
         time = 0.000000;
         for (int32 i = 0; i < 16; i++) {
-            Planet* planet = &planets[i]/*not constant*/;
-            float32 t = (3.141593 * 2.000000)/*constant*/;
+            Planet* planet = &planets[i];
+            float32 t = (3.141593 * 2.000000);
             planet->pos.x = (cosf((planet->orbitOffset + ((t * time) / planet->yearDuration))) * planet->dist);
             planet->pos.y = (sinf((planet->orbitOffset + ((t * time) / planet->yearDuration))) * planet->dist);
             drawPlanet(planet);
         }
         draw_text1((vec2){0, 0}, 0.100000, make_string("Hello"), (Color){255, 255, 255, 255});
         for (int32 i = 0; i < entitiesLength; i++) {
-            Entity* e = &entities[i]/*not constant*/;
+            Entity* e = &entities[i];
             updateEntity(e);
         }
         if (key1('Q')) camera.rot -= 0.050000;
@@ -1955,12 +1975,12 @@ int32 main() {
         player->transform.rot = camera.rot;
         applyCamera();
         for (int32 i = 0; i < entitiesLength; i++) {
-            Entity* e = &entities[i]/*not constant*/;
+            Entity* e = &entities[i];
             applyTransform(e->transform);
             draw_elements1(e->db);
         }
         {
-            vec2 mouseCoord = getMouseWorldCoord()/*not constant*/;
+            vec2 mouseCoord = getMouseWorldCoord();
             uniform_entity_pos(mouseCoord);
             uniform_entity_scale(voxel_edit_radius);
             draw_elements1(voxelMesh_circle);
@@ -1999,44 +2019,44 @@ static VoxelGrid createVoxelGrid(uint32 res) {
     grid.transform.pos = make_vec1(0, 0);
     grid.transform.rot = 0;
     grid.res = res;
-    grid.data = malloc(sizeof(float32) * (res * res));
+    grid.data = malloc(((res * res) * sizeof(float32)));
     grid.numVerts = (((3 * grid.res) * grid.res) - (2 * grid.res));
-    grid.verts = malloc(sizeof(vertex) * grid.numVerts);
-    float32 half = ((float32)grid.res / 2.000000)/*not constant*/;
+    grid.verts = malloc((grid.numVerts * sizeof(vertex2D)));
+    float32 half = ((float32)grid.res / 2.000000);
     for (uint32 x = 0; x < grid.res; x++) {
         for (uint32 y = 0; y < grid.res; y++) {
-            uint32 i = getIndex(grid.res, x, y)/*not constant*/;
-            grid.verts[i].x = ((float32)x - half);
-            grid.verts[i].y = ((float32)y - half);
+            uint32 i = getIndex(grid.res, x, y);
+            grid.verts[i].pos.x = ((float32)x - half);
+            grid.verts[i].pos.y = ((float32)y - half);
         }
     }
     grid.inds = list_create((uint32)sizeof(uint32));
     grid.inds_outline = list_create((uint32)sizeof(uint32));
-    grid.db = create_draw_buffers();
+    grid.db = create_draw_buffers2();
     glGenBuffers(1, &grid.inds_outline_ebo);
     return grid;
 }
 static void updateGridMesh(VoxelGrid* grid) {
     list_clear(grid->inds);
     list_clear(grid->inds_outline);
-    uint32 size = (grid->res - 1)/*not constant*/;
-    uint32 g1_byteoffset = (grid->res * grid->res)/*not constant*/;
-    uint32 g2_byteoffset = (g1_byteoffset + (grid->res * size))/*not constant*/;
+    uint32 size = (grid->res - 1);
+    uint32 g1_byteoffset = (grid->res * grid->res);
+    uint32 g2_byteoffset = (g1_byteoffset + (grid->res * size));
     for (uint32 x = 0; x < size; x++) {
         for (uint32 y = 0; y < size; y++) {
-            uint32 e2 = ((g1_byteoffset + (x * size)) + y)/*not constant*/;
-            uint32 e3 = ((g1_byteoffset + ((x + 1) * size)) + y)/*not constant*/;
-            uint32 e1 = ((g2_byteoffset + (x * grid->res)) + (y + 1))/*not constant*/;
-            uint32 e4 = ((g2_byteoffset + (x * grid->res)) + y)/*not constant*/;
-            uint32 i1 = getIndex(grid->res, x, (y + 1))/*not constant*/;
-            uint32 i2 = getIndex(grid->res, (x + 1), (y + 1))/*not constant*/;
-            uint32 i3 = getIndex(grid->res, x, y)/*not constant*/;
-            uint32 i4 = getIndex(grid->res, (x + 1), y)/*not constant*/;
-            float32 p1 = grid->data[i1]/*not constant*/;
-            float32 p2 = grid->data[i2]/*not constant*/;
-            float32 p3 = grid->data[i3]/*not constant*/;
-            float32 p4 = grid->data[i4]/*not constant*/;
-            uint8 mask = 0/*constant*/;
+            uint32 e2 = ((g1_byteoffset + (x * size)) + y);
+            uint32 e3 = ((g1_byteoffset + ((x + 1) * size)) + y);
+            uint32 e1 = ((g2_byteoffset + (x * grid->res)) + (y + 1));
+            uint32 e4 = ((g2_byteoffset + (x * grid->res)) + y);
+            uint32 i1 = getIndex(grid->res, x, (y + 1));
+            uint32 i2 = getIndex(grid->res, (x + 1), (y + 1));
+            uint32 i3 = getIndex(grid->res, x, y);
+            uint32 i4 = getIndex(grid->res, (x + 1), y);
+            float32 p1 = grid->data[i1];
+            float32 p2 = grid->data[i2];
+            float32 p3 = grid->data[i3];
+            float32 p4 = grid->data[i4];
+            uint8 mask = 0;
             if (p1 > 0.001000) mask |= 8;
             if (p2 > 0.001000) mask |= 4;
             if (p3 > 0.001000) mask |= 2;
@@ -2150,31 +2170,31 @@ static void updateGridMesh(VoxelGrid* grid) {
         }
     }
     if (1) {
-        float32 half = ((float32)grid->res / 2.000000)/*not constant*/;
+        float32 half = ((float32)grid->res / 2.000000);
         for (uint32 x = 0; x < grid->res; x++) {
             for (uint32 y = 0; y < size; y++) {
-                float32 p1 = grid->data[getIndex(grid->res, x, y)]/*not constant*/;
-                float32 p2 = grid->data[getIndex(grid->res, x, (y + 1))]/*not constant*/;
-                uint8 b1 = (p1 > 0.001000)/*not constant*/;
-                uint8 b2 = (p2 > 0.001000)/*not constant*/;
+                float32 p1 = grid->data[getIndex(grid->res, x, y)];
+                float32 p2 = grid->data[getIndex(grid->res, x, (y + 1))];
+                uint8 b1 = (p1 > 0.001000);
+                uint8 b2 = (p2 > 0.001000);
                 float32 ofs;
                 if (b1 == b2) ofs = 0.500000; else if (b1) ofs = p1; else ofs = (1.000000 - p2);
-                uint32 i = ((g1_byteoffset + (x * size)) + y)/*not constant*/;
-                grid->verts[i].x = (x - half);
-                grid->verts[i].y = ((y + ofs) - half);
+                uint32 i = ((g1_byteoffset + (x * size)) + y);
+                grid->verts[i].pos.x = (x - half);
+                grid->verts[i].pos.y = ((y + ofs) - half);
             }
         }
         for (uint32 x = 0; x < size; x++) {
             for (uint32 y = 0; y < grid->res; y++) {
-                float32 p1 = grid->data[getIndex(grid->res, x, y)]/*not constant*/;
-                float32 p2 = grid->data[getIndex(grid->res, (x + 1), y)]/*not constant*/;
-                uint8 b1 = (p1 > 0.001000)/*not constant*/;
-                uint8 b2 = (p2 > 0.001000)/*not constant*/;
+                float32 p1 = grid->data[getIndex(grid->res, x, y)];
+                float32 p2 = grid->data[getIndex(grid->res, (x + 1), y)];
+                uint8 b1 = (p1 > 0.001000);
+                uint8 b2 = (p2 > 0.001000);
                 float32 ofs;
                 if (b1 == b2) ofs = 0.500000; else if (b1) ofs = p1; else ofs = (1.000000 - p2);
-                uint32 i = ((g2_byteoffset + (x * grid->res)) + y)/*not constant*/;
-                grid->verts[i].x = ((x + ofs) - half);
-                grid->verts[i].y = (y - half);
+                uint32 i = ((g2_byteoffset + (x * grid->res)) + y);
+                grid->verts[i].pos.x = ((x + ofs) - half);
+                grid->verts[i].pos.y = (y - half);
             }
         }
     }
@@ -2182,61 +2202,61 @@ static void updateGridMesh(VoxelGrid* grid) {
     update_buffer(grid->inds_outline_ebo, (list_length(grid->inds_outline) * (uint32)sizeof(uint32)), grid->inds_outline);
 }
 static vec2 getLocalCoords(VoxelGrid* grid, float32 x, float32 y) {
-    vec2 p = world2local2(grid->transform, x, y)/*not constant*/;
-    float32 half = ((float32)grid->res / 2.000000)/*not constant*/;
+    vec2 p = world2local2(grid->transform, x, y);
+    float32 half = ((float32)grid->res / 2.000000);
     p.x += half;
     p.y += half;
     return p;
 }
 static void VoxelGrid_addCircle(VoxelGrid* grid, float32 radius, float32 x, float32 y) {
-    vec2 p = getLocalCoords(grid, x, y)/*not constant*/;
-    int32 rx = round2int(p.x)/*not constant*/;
-    int32 ry = round2int(p.y)/*not constant*/;
-    int32 iradius = (int32)(radius + 1)/*not constant*/;
-    int32 x_min = clamp1((rx - iradius), 0, (int32)grid->res)/*not constant*/;
-    int32 x_max = clamp1((rx + iradius), 0, (int32)grid->res)/*not constant*/;
-    int32 y_min = clamp1((ry - iradius), 0, (int32)grid->res)/*not constant*/;
-    int32 y_max = clamp1((ry + iradius), 0, (int32)grid->res)/*not constant*/;
+    vec2 p = getLocalCoords(grid, x, y);
+    int32 rx = round2int(p.x);
+    int32 ry = round2int(p.y);
+    int32 iradius = (int32)(radius + 1);
+    int32 x_min = clamp1((rx - iradius), 0, (int32)grid->res);
+    int32 x_max = clamp1((rx + iradius), 0, (int32)grid->res);
+    int32 y_min = clamp1((ry - iradius), 0, (int32)grid->res);
+    int32 y_max = clamp1((ry + iradius), 0, (int32)grid->res);
     for (int32 ix = x_min; ix < x_max; ix++) {
         for (int32 iy = y_min; iy < y_max; iy++) {
-            float32 xf = ((float32)ix - p.x)/*not constant*/;
-            float32 yf = ((float32)iy - p.y)/*not constant*/;
-            float32 len = sqrtf(((xf * xf) + (yf * yf)))/*not constant*/;
-            int32 i = ((ix * grid->res) + iy)/*not constant*/;
-            float32 addition = clamp2((radius - len), 0, 1)/*not constant*/;
+            float32 xf = ((float32)ix - p.x);
+            float32 yf = ((float32)iy - p.y);
+            float32 len = sqrtf(((xf * xf) + (yf * yf)));
+            int32 i = ((ix * grid->res) + iy);
+            float32 addition = clamp2((radius - len), 0, 1);
             if (grid->data[i] < addition) grid->data[i] = addition;
         }
     }
 }
 static void VoxelGrid_removeCircle(VoxelGrid* grid, float32 radius, float32 x, float32 y) {
-    vec2 p = getLocalCoords(grid, x, y)/*not constant*/;
-    int32 rx = round2int(p.x)/*not constant*/;
-    int32 ry = round2int(p.y)/*not constant*/;
-    int32 iradius = (int32)(radius + 1)/*not constant*/;
-    int32 x_min = clamp1((rx - iradius), 0, (int32)grid->res)/*not constant*/;
-    int32 x_max = clamp1((rx + iradius), 0, (int32)grid->res)/*not constant*/;
-    int32 y_min = clamp1((ry - iradius), 0, (int32)grid->res)/*not constant*/;
-    int32 y_max = clamp1((ry + iradius), 0, (int32)grid->res)/*not constant*/;
+    vec2 p = getLocalCoords(grid, x, y);
+    int32 rx = round2int(p.x);
+    int32 ry = round2int(p.y);
+    int32 iradius = (int32)(radius + 1);
+    int32 x_min = clamp1((rx - iradius), 0, (int32)grid->res);
+    int32 x_max = clamp1((rx + iradius), 0, (int32)grid->res);
+    int32 y_min = clamp1((ry - iradius), 0, (int32)grid->res);
+    int32 y_max = clamp1((ry + iradius), 0, (int32)grid->res);
     for (int32 ix = x_min; ix < (x_max + 1); ix++) {
         for (int32 iy = y_min; iy < (y_max + 1); iy++) {
-            float32 xf = ((float32)ix - p.x)/*not constant*/;
-            float32 yf = ((float32)iy - p.y)/*not constant*/;
-            float32 len = sqrtf(((xf * xf) + (yf * yf)))/*not constant*/;
-            int32 i = ((ix * grid->res) + iy)/*not constant*/;
-            float32 newValue = clamp2((len - radius), 0, 1)/*not constant*/;
+            float32 xf = ((float32)ix - p.x);
+            float32 yf = ((float32)iy - p.y);
+            float32 len = sqrtf(((xf * xf) + (yf * yf)));
+            int32 i = ((ix * grid->res) + iy);
+            float32 newValue = clamp2((len - radius), 0, 1);
             if (grid->data[i] > newValue) grid->data[i] = newValue;
         }
     }
 }
 static vec2 calcCenterOfMass(VoxelGrid* grid) {
-    vec2 res = make_vec1(0, 0)/*not constant*/;
-    float32 total = 0/*constant*/;
-    uint32 x = -1/*constant*/;
+    vec2 res = make_vec1(0, 0);
+    float32 total = 0;
+    uint32 x = -1;
     while (++x < grid->res) {
-        uint32 y = -1/*constant*/;
+        uint32 y = -1;
         while (++y < grid->res) {
-            uint32 i = ((x * grid->res) + y)/*not constant*/;
-            float32 value = grid->data[i]/*not constant*/;
+            uint32 i = ((x * grid->res) + y);
+            float32 value = grid->data[i];
             if (value > 0.001000) {
                 total += value;
                 res = add1(res, mul2(make_vec1(x, y), value));
@@ -2247,33 +2267,33 @@ static vec2 calcCenterOfMass(VoxelGrid* grid) {
     return res;
 }
 static vec2 rot90deg(vec2 v) {
-    vec2 res = make_vec1(-v.y, v.x)/*not constant*/;
+    vec2 res = make_vec1(-v.y, v.x);
     return res;
 }
 static int32 ray_lineseg_intersects(Ray ray, Lineseg seg, Intersection* out_intersection) {
-    vec2 A = sub1(seg.start, ray.origin)/*not constant*/;
-    vec2 B = sub1(seg.end, ray.origin)/*not constant*/;
-    vec2 tangent = rot90deg(ray.dir)/*not constant*/;
-    float32 d1 = dot1(A, tangent)/*not constant*/;
-    float32 d2 = dot1(B, tangent)/*not constant*/;
+    vec2 A = sub1(seg.start, ray.origin);
+    vec2 B = sub1(seg.end, ray.origin);
+    vec2 tangent = rot90deg(ray.dir);
+    float32 d1 = dot1(A, tangent);
+    float32 d2 = dot1(B, tangent);
     return 0;
 }
 static int32 point_intersects(vec2 point, VoxelGrid* grid, Intersection* out_intersection) {
     *out_intersection = (Intersection){0};
     point = getLocalCoords(grid, point.x, point.y);
-    int32 x = (int32)point.x/*not constant*/;
-    int32 y = (int32)point.y/*not constant*/;
+    int32 x = (int32)point.x;
+    int32 y = (int32)point.y;
     if ((x < 0) || (x >= grid->res)) return 0;
     if ((y < 0) || (y >= grid->res)) return 0;
-    int32 i1 = (((grid->res * x) + y) + 1)/*not constant*/;
-    int32 i2 = (((grid->res * (x + 1)) + y) + 1)/*not constant*/;
-    int32 i3 = ((grid->res * x) + y)/*not constant*/;
-    int32 i4 = ((grid->res * (x + 1)) + y)/*not constant*/;
-    float32 p1 = grid->data[i1]/*not constant*/;
-    float32 p2 = grid->data[i2]/*not constant*/;
-    float32 p3 = grid->data[i3]/*not constant*/;
-    float32 p4 = grid->data[i4]/*not constant*/;
-    uint8 mask = 0/*constant*/;
+    int32 i1 = (((grid->res * x) + y) + 1);
+    int32 i2 = (((grid->res * (x + 1)) + y) + 1);
+    int32 i3 = ((grid->res * x) + y);
+    int32 i4 = ((grid->res * (x + 1)) + y);
+    float32 p1 = grid->data[i1];
+    float32 p2 = grid->data[i2];
+    float32 p3 = grid->data[i3];
+    float32 p4 = grid->data[i4];
+    uint8 mask = 0;
     if (p1 > 0.001000) mask |= 8;
     if (p2 > 0.001000) mask |= 4;
     if (p3 > 0.001000) mask |= 2;
@@ -2336,9 +2356,9 @@ static int32 point_intersects(vec2 point, VoxelGrid* grid, Intersection* out_int
         default:
         return 0;
     }
-    vec2 local = sub1(point, make_vec1(x, y))/*not constant*/;
+    vec2 local = sub1(point, make_vec1(x, y));
     local = sub1(local, a);
-    vec2 normal = rot90deg(sub1(b, a))/*not constant*/;
+    vec2 normal = rot90deg(sub1(b, a));
     normal = normalize1(normal);
     out_intersection->distance = dot1(normal, local);
     out_intersection->surface_normal = rotate_vec(normal, grid->transform.rot);
@@ -2355,10 +2375,10 @@ static char* fileread2(char* filename, char* mode) {
         return 0;
     }
     fseek(file, 0, 2);
-    uint64 len = ftell(file)/*not constant*/;
+    uint64 len = ftell(file);
     rewind(file);
-    char* buffer = calloc((len + 1), 1)/*not constant*/;
-    uint64 end = fread(buffer, 1, len, file)/*not constant*/;
+    char* buffer = calloc((len + 1), 1);
+    uint64 end = fread(buffer, 1, len, file);
     buffer[end] = (char)0;
     fclose(file);
     return buffer;
@@ -2373,7 +2393,7 @@ static void filewrite(char* filename, char* content) {
     fclose(file);
 }
 static void* list_create(uint32 stride) {
-    List* head = malloc((sizeof(List) + (stride * 2)))/*not constant*/;
+    List* head = malloc((sizeof(List) + (stride * 2)));
     head->stride = stride;
     head->capacity = 2;
     head->length = 0;
@@ -2386,13 +2406,13 @@ static void list_clear(void* list) {
     list_head(list)->length = 0;
 }
 static void list_add(void** list, void* data) {
-    List* head = list_head(*list)/*not constant*/;
+    List* head = list_head(*list);
     if (head->capacity == head->length) {
         head->capacity *= 2;
         head = realloc(head, (sizeof(List) + (head->capacity * head->stride)));
         *list = &head[1];
     }
-    uint64 dst = (uint64)*list/*not constant*/;
+    uint64 dst = (uint64)*list;
     dst += (head->length * head->stride);
     memcpy((void*)dst, data, head->stride);
     head->length++;
@@ -2940,25 +2960,26 @@ static void load_opengl(void (*(*getProcAddress)(char*))()) {
     glWaitSync = (proc_glWaitSync)getProcAddress("glWaitSync");
 }
 static string make_string(char* c_str) {
-    string str = (string) {c_str, strlen(c_str)}/*not constant*/;
+    string str = (string) {c_str, strlen(c_str)};
     return str;
 }
 static uint64 parse_int(string str) {
-    uint64 res = 0/*constant*/;
-    uint64 place = 1/*constant*/;
+    uint64 res = 0;
+    uint64 place = 1;
     for (int32 i = 0; i < str.length; i++) {
-        uint8 c = (uint8)str.chars[i]/*not constant*/;
-        uint8 p = (c % 10)/*not constant*/;
+        uint8 c = (uint8)str.chars[i];
+        uint8 p = (c % 10);
         res += (p * place);
         place *= 10;
     }
     return res;
 }
 static string to_string(uint64 num) {
+    // static decl
     if (num == 0) return (string){"0", 1};
-    uint32 i = 20/*constant*/;
+    uint32 i = 20;
     while (num != 0) {
-        uint8 r = (uint8)(num % 10)/*not constant*/;
+        uint8 r = (uint8)(num % 10);
         num /= 10;
         num_str[--i] = ('0' + (char)r);
     }
@@ -3018,7 +3039,7 @@ static void sb_append1(StringBuilder* sb, string str) {
     sb->content[sb->length] = (char)0;
 }
 static void sb_append2(StringBuilder* sb, char* str) {
-    uint32 len = (uint32)strlen(str)/*not constant*/;
+    uint32 len = (uint32)strlen(str);
     sb_grow(sb, len);
     while (*str) sb->content[sb->length++] = *(str++);
     sb->content[sb->length] = (char)0;
@@ -3030,7 +3051,7 @@ static void sb_append3(StringBuilder* sb, char c) {
 }
 static void sb_insert(StringBuilder* sb, int32 loc, string str) {
     sb_grow(sb, str.length);
-    int32 i = (int32)sb->length/*not constant*/;
+    int32 i = (int32)sb->length;
     while (i >= loc) {
         sb->content[(i + str.length)] = sb->content[i];
         i--;
@@ -3041,7 +3062,7 @@ static void sb_insert(StringBuilder* sb, int32 loc, string str) {
     }
 }
 static void sb_remove(StringBuilder* sb, int32 loc, uint32 num_chars) {
-    int32 i = loc/*not constant*/;
+    int32 i = loc;
     while (i <= sb->length) {
         sb->content[i] = sb->content[(i + num_chars)];
         i++;
@@ -3056,15 +3077,6 @@ static vec2 window_size() {
     int32 h;
     glfwGetWindowSize(main_window, &w, &h);
     return (vec2){w, h};
-}
-static int32 key1(char c) {
-    return glfwGetKey(main_window, (int32)c);
-}
-static int32 key2(int32 c) {
-    return glfwGetKey(main_window, c);
-}
-static int32 mouse(int32 btn) {
-    return glfwGetMouseButton(main_window, btn);
 }
 static int32 grax_loop() {
     dispatch_immediate();
@@ -3101,18 +3113,18 @@ static void grax_init() {
     glBlendFunc(770, 771);
     glClearColor(0.100000, 0.100000, 0.100000, 1.000000);
     {
-        immediate_vertices = list_create((uint32)(sizeof(vertex)));
+        immediate_vertices = list_create((uint32)(sizeof(vertex2D)));
         immediate_indices = list_create((uint32)(sizeof(uint32)));
-        immediate_buffer = create_draw_buffers();
+        immediate_buffer = create_draw_buffers2();
     }
     {
-        char* fragsrc = fileread1("../grax/shaders/frag.glsl")/*not constant*/;
-        char* vertsrc = fileread1("../grax/shaders/vert.glsl")/*not constant*/;
+        char* fragsrc = fileread1("../grax/shaders/frag.glsl");
+        char* vertsrc = fileread1("../grax/shaders/vert.glsl");
         immediate_shader = create_shader(fragsrc, vertsrc);
         free(fragsrc);
         free(vertsrc);
     }
-    Image image = load_bitmap("../grax/CascadiaMono.bmp")/*not constant*/;
+    Image image = load_bitmap("../grax/CascadiaMono.bmp");
     text_atlas = create_texture2D(image);
     free(image.pixels);
 }
@@ -3121,7 +3133,7 @@ static void on_resize(GLFWwindow* window, int32 w, int32 h) {
     main_window_height = (float32)h;
     main_window_aspect = (main_window_height / main_window_width);
     printf("%s%f%s%f%s%f%s", "Main Window Resize:\n    width = ", main_window_width, "\n    height = ", main_window_height, "\n    aspect = ", main_window_aspect, "\n");
-    GLint aspect_loc = glGetUniformLocation(immediate_shader.gl_handle, "aspect")/*not constant*/;
+    GLint aspect_loc = glGetUniformLocation(immediate_shader.gl_handle, "aspect");
     glUniform1f(aspect_loc, main_window_aspect);
     glViewport(0, 0, w, h);
 }
@@ -3150,24 +3162,24 @@ static void opengl_debug_callback(GLenum source, GLenum _type, GLuint id, GLenum
     }
     printf("%s%s", message, "\n");
 }
-static GLFWmonitor* get_ideal_monitor() {
+static GLFWmonitor* get_ideal_monitor(GLFWwindow* window) {
     int32 x;
     int32 y;
     int32 w;
     int32 h;
-    glfwGetWindowPos(main_window, &x, &y);
-    glfwGetWindowSize(main_window, &w, &h);
+    glfwGetWindowPos(window, &x, &y);
+    glfwGetWindowSize(window, &w, &h);
     int32 monitor_count;
-    GLFWmonitor** monitors = glfwGetMonitors(&monitor_count)/*not constant*/;
-    int32 ideal = 0/*constant*/;
-    int32 highest_area = 0/*constant*/;
+    GLFWmonitor** monitors = glfwGetMonitors(&monitor_count);
+    int32 ideal = 0;
+    int32 highest_area = 0;
     for (int32 i = 0; i < monitor_count; i++) {
-        GLFWmonitor* m = monitors[i]/*not constant*/;
+        GLFWmonitor* m = monitors[i];
         int32 mX;
         int32 mY;
         glfwGetMonitorPos(m, &mX, &mY);
-        GLFWvidmode* mode = glfwGetVideoMode(m)/*not constant*/;
-        int32 area = (max(0, (min((x + w), (mX + mode->width)) - max(x, mX))) * max(0, (min((y + h), (mY + mode->height)) - max(y, mY))))/*not constant*/;
+        GLFWvidmode* mode = glfwGetVideoMode(m);
+        int32 area = (max(0, (min((x + w), (mX + mode->width)) - max(x, mX))) * max(0, (min((y + h), (mY + mode->height)) - max(y, mY))));
         if (area > highest_area) {
             highest_area = area;
             ideal = i;
@@ -3176,21 +3188,21 @@ static GLFWmonitor* get_ideal_monitor() {
     return monitors[ideal];
 }
 static void toggle_fullscreen(GLFWwindow* window) {
-    GLFWmonitor* monitor = glfwGetWindowMonitor(window)/*not constant*/;
+    GLFWmonitor* monitor = glfwGetWindowMonitor(window);
     if (monitor) {
         int32 mX;
         int32 mY;
         glfwGetMonitorPos(monitor, &mX, &mY);
         glfwSetWindowMonitor(window, 0, (mX + 60), (mY + 60), 1600, 900, 0);
     } else {
-        GLFWmonitor* m = get_ideal_monitor()/*not constant*/;
-        GLFWvidmode* mode = glfwGetVideoMode(m)/*not constant*/;
+        GLFWmonitor* m = get_ideal_monitor(window);
+        GLFWvidmode* mode = glfwGetVideoMode(m);
         glfwSetWindowMonitor(window, m, 0, 0, mode->width, mode->height, mode->refreshRate);
     }
 }
 static Color rgba(uint32 i) {
     Color c;
-    uint8* b = (uint8*)&i/*not constant*/;
+    uint8* b = (uint8*)&i;
     c.r = b[3];
     c.g = b[2];
     c.b = b[1];
@@ -3222,60 +3234,21 @@ static void set_filter(Texture2D tex, uint32 filter) {
     glTexParameteri(3553, 10240, filter);
     glBindTexture(3553, 0);
 }
-static DrawBuffers create_draw_buffers() {
-    DrawBuffers db;
-    db.elements_count = 0;
-    glGenVertexArrays(1, &db.vao);
-    glBindVertexArray(db.vao);
-    glGenBuffers(1, &db.vbo);
-    glBindBuffer(34962, db.vbo);
-    glGenBuffers(1, &db.ebo);
-    glBindBuffer(34963, db.ebo);
-    vertex* v = 0/*constant*/;
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, 5126, 0, sizeof(vertex), &v->x);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, 5126, 0, sizeof(vertex), &v->u);
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 4, 5121, 1, sizeof(vertex), &v->color);
-    glBindVertexArray(0);
-    glBindBuffer(34962, 0);
-    return db;
-}
-static void update_buffers(DrawBuffers* db, vertex* vertices, uint32 vertices_count, uint32* indices, uint32 indices_count) {
-    db->elements_count = (int32)indices_count;
-    update_buffer(db->vbo, (vertices_count * (uint32)(sizeof(vertex))), vertices);
-    update_buffer(db->ebo, (indices_count * (uint32)(sizeof(uint32))), indices);
-}
-static void update_buffer(uint32 buffer, uint32 size, void* data) {
-    glBindBuffer(34962, buffer);
-    glBufferData(34962, size, data, 35044);
-    glBindBuffer(34962, 0);
-}
-static void draw_elements1(DrawBuffers db) {
-    glBindVertexArray(db.vao);
-    glDrawElements(4, db.elements_count, 5125, 0);
-    glBindVertexArray(0);
-}
-static void draw_elements2(DrawBuffers db, uint32 instanceCount) {
-    glBindVertexArray(db.vao);
-    glDrawElementsInstanced(4, db.elements_count, 5125, 0, instanceCount);
-    glBindVertexArray(0);
-}
-static void use(Shader s) {
-    glUseProgram(s.gl_handle);
+static void use(Shader* s) {
+    active_shader = s;
+    glUseProgram(s->gl_handle);
 }
 static uint32 makeshader(uint32 program, GLenum _type, char* code) {
-    uint32 s = glCreateShader(_type)/*not constant*/;
+    uint32 s = glCreateShader(_type);
     glShaderSource(s, 1, &code, 0);
     glAttachShader(program, s);
     return s;
 }
 static Shader create_shader(char* fragsrc, char* vertsrc) {
     // local procedure
-    uint32 program = glCreateProgram()/*not constant*/;
-    uint32 f = makeshader(program, 35632, fragsrc)/*not constant*/;
-    uint32 v = makeshader(program, 35633, vertsrc)/*not constant*/;
+    uint32 program = glCreateProgram();
+    uint32 f = makeshader(program, 35632, fragsrc);
+    uint32 v = makeshader(program, 35633, vertsrc);
     glLinkProgram(program);
     glDetachShader(program, f);
     glDeleteShader(f);
@@ -3284,18 +3257,19 @@ static Shader create_shader(char* fragsrc, char* vertsrc) {
     int32 status;
     glGetProgramiv(program, 35714, &status);
     if (status == 0) {
-        GLsizei size = 1024/*constant*/;
-        char buffer[size];
+        GLsizei size = 1024;
+        char* buffer = malloc((uint64)size);
         glGetProgramInfoLog(program, size, &size, buffer);
-        printf("%s", (char*)buffer);
+        printf("%s", buffer);
+        free(buffer);
     }
     Shader s;
     s.gl_handle = program;
     return s;
 }
 static void dispatch_immediate() {
-    uint32 vert_count = list_length(immediate_vertices)/*not constant*/;
-    uint32 ind_count = list_length(immediate_indices)/*not constant*/;
+    uint32 vert_count = list_length(immediate_vertices);
+    uint32 ind_count = list_length(immediate_indices);
     if (vert_count != 0) {
         update_buffers(&immediate_buffer, immediate_vertices, vert_count, immediate_indices, ind_count);
         bind(text_atlas);
@@ -3309,16 +3283,14 @@ static void immediate_vertex1(float32 x, float32 y, float32 u, float32 v) {
     immediate_vertex2(x, y, u, v, (Color){255, 255, 255, 255});
 }
 static void immediate_vertex2(float32 x, float32 y, float32 u, float32 v, Color color) {
-    vertex vert;
-    vert.x = x;
-    vert.y = y;
-    vert.u = u;
-    vert.v = v;
+    vertex2D vert;
+    vert.pos = (vec2) {x, y};
+    vert.uv = (vec2) {u, v};
     vert.color = color;
     list_add(&immediate_vertices, &vert);
 }
 static void immediate_triangle(uint32 i1, uint32 i2, uint32 i3) {
-    uint32 base = list_length(immediate_vertices)/*not constant*/;
+    uint32 base = list_length(immediate_vertices);
     i1 += base;
     i2 += base;
     i3 += base;
@@ -3327,8 +3299,8 @@ static void immediate_triangle(uint32 i1, uint32 i2, uint32 i3) {
     list_add(&immediate_indices, &i3);
 }
 static void draw_rect(vec2 pos, vec2 size) {
-    float32 sx = (size.x * 0.500000)/*not constant*/;
-    float32 sy = (size.y * 0.500000)/*not constant*/;
+    float32 sx = (size.x * 0.500000);
+    float32 sy = (size.y * 0.500000);
     immediate_triangle(0, 1, 2);
     immediate_triangle(1, 3, 2);
     immediate_vertex1((pos.x + -sx), (pos.y + -sy), 0, 0);
@@ -3341,14 +3313,14 @@ static void draw_image(Texture2D* image) {
 static void draw_char(vec2 pos, float32 size, char c, Color color) {
     /* local constant */
     /* local constant */
-    uint32 b = ((uint8)c - ' ')/*not constant*/;
-    float32 col = (b % 14)/*not constant*/;
-    float32 row = ((b / 14) + 1)/*not constant*/;
-    float32 u = (col / 14.000000)/*not constant*/;
-    float32 v = (row / 7.000000)/*not constant*/;
+    uint32 b = ((uint8)c - ' ');
+    float32 col = (b % 14);
+    float32 row = ((b / 14) + 1);
+    float32 u = (col / 14.000000);
+    float32 v = (row / 7.000000);
     v = (1 - v);
-    float32 sx = ((size * 0.500000) * 0.500000)/*not constant*/;
-    float32 sy = (size * 0.500000)/*not constant*/;
+    float32 sx = ((size * 0.500000) * 0.500000);
+    float32 sy = (size * 0.500000);
     immediate_triangle(0, 1, 2);
     immediate_triangle(1, 3, 2);
     immediate_vertex2((pos.x + -sx), (pos.y + -sy), u, v, color);
@@ -3357,10 +3329,10 @@ static void draw_char(vec2 pos, float32 size, char c, Color color) {
     immediate_vertex2((pos.x + sx), (pos.y + sy), (u + (1.000000 / 14.000000)), (v + (1.000000 / 7.000000)), color);
 }
 static vec2 draw_text1(vec2 pos, float32 size, string text, Color color) {
-    float32 start = pos.x/*not constant*/;
+    float32 start = pos.x;
     for (int32 i = 0; i < text.length; i++) {
-        char c = text.chars[i]/*not constant*/;
-        if (c == *"\n") {
+        char c = text.chars[i];
+        if (c == '\n') {
             pos.x = start;
             pos.y -= size;
             continue;
@@ -3371,16 +3343,16 @@ static vec2 draw_text1(vec2 pos, float32 size, string text, Color color) {
     return pos;
 }
 static vec2 draw_text_backwards(vec2 pos, float32 size, string text, Color color) {
-    int32 i = ((int32)text.length - 1)/*not constant*/;
+    int32 i = ((int32)text.length - 1);
     while (i >= 0) {
-        char c = text.chars[i--]/*not constant*/;
+        char c = text.chars[i--];
         if (c != ' ') draw_char(pos, size, c, color);
         pos.x -= (size * 0.500000);
     }
     return pos;
 }
 static vec2 draw_text2(vec2 pos, float32 size, char* text) {
-    float32 start = pos.x/*not constant*/;
+    float32 start = pos.x;
     while (*text) {
         switch (*text) {
             case '\n':
@@ -3410,20 +3382,20 @@ static vec2 random_vec2(float32 x, float32 y) {
     return v;
 }
 static float32 gnoise(float32 x, float32 y) {
-    float32 ix = floorf(x)/*not constant*/;
-    float32 iy = floorf(y)/*not constant*/;
-    float32 fx = fract(x)/*not constant*/;
-    float32 fy = fract(y)/*not constant*/;
-    float32 ux = ((fx * fx) * ((-fx * 2.000000) + 3.000000))/*not constant*/;
-    float32 uy = ((fy * fy) * ((-fy * 2.000000) + 3.000000))/*not constant*/;
-    vec2 r = random_vec2(ix, iy)/*not constant*/;
-    float32 d1 = ((r.x * fx) + (r.y * fy))/*not constant*/;
+    float32 ix = floorf(x);
+    float32 iy = floorf(y);
+    float32 fx = fract(x);
+    float32 fy = fract(y);
+    float32 ux = ((fx * fx) * ((-fx * 2.000000) + 3.000000));
+    float32 uy = ((fy * fy) * ((-fy * 2.000000) + 3.000000));
+    vec2 r = random_vec2(ix, iy);
+    float32 d1 = ((r.x * fx) + (r.y * fy));
     r = random_vec2((ix + 1.000000), iy);
-    float32 d2 = ((r.x * (fx - 1.000000)) + (r.y * fy))/*not constant*/;
+    float32 d2 = ((r.x * (fx - 1.000000)) + (r.y * fy));
     r = random_vec2(ix, (iy + 1.000000));
-    float32 d3 = ((r.x * fx) + (r.y * (fy - 1.000000)))/*not constant*/;
+    float32 d3 = ((r.x * fx) + (r.y * (fy - 1.000000)));
     r = random_vec2((ix + 1.000000), (iy + 1.000000));
-    float32 d4 = ((r.x * (fx - 1.000000)) + (r.y * (fy - 1.000000)))/*not constant*/;
+    float32 d4 = ((r.x * (fx - 1.000000)) + (r.y * (fy - 1.000000)));
     return lerp1(uy, lerp1(ux, d1, d2), lerp1(ux, d3, d4));
 }
 static int32 min(int32 a, int32 b) {
@@ -3663,49 +3635,49 @@ static vec4 mul15(vec4 v, mat4 m) {
     return (vec4) {dot3(v, col13(m)), dot3(v, col23(m)), dot3(v, col32(m)), dot3(v, col4(m))};
 }
 static mat4 perspective(float32 fovy, float32 aspect, float32 near_depth, float32 far_depth) {
-    float32 maxY = (near_depth * tanf((0.500000 * fovy)))/*not constant*/;
-    float32 minY = -maxY/*not constant*/;
-    float32 minX = (minY * aspect)/*not constant*/;
-    float32 maxX = (maxY * aspect)/*not constant*/;
+    float32 maxY = (near_depth * tanf((0.500000 * fovy)));
+    float32 minY = -maxY;
+    float32 minX = (minY * aspect);
+    float32 maxX = (maxY * aspect);
     return perspective_off_center(minX, maxX, minY, maxY, near_depth, far_depth);
 }
 static mat4 perspective_off_center(float32 left, float32 right, float32 bottom, float32 top, float32 near_depth, float32 far_depth) {
-    float32 x = ((2.000000 * near_depth) / (right - left))/*not constant*/;
-    float32 y = ((2.000000 * near_depth) / (top - bottom))/*not constant*/;
-    float32 a = ((right + left) / (right - left))/*not constant*/;
-    float32 b = ((top + bottom) / (top - bottom))/*not constant*/;
-    float32 c = (-(far_depth + near_depth) / (far_depth - near_depth))/*not constant*/;
-    float32 d = (-((2.000000 * far_depth) * near_depth) / (far_depth - near_depth))/*not constant*/;
+    float32 x = ((2.000000 * near_depth) / (right - left));
+    float32 y = ((2.000000 * near_depth) / (top - bottom));
+    float32 a = ((right + left) / (right - left));
+    float32 b = ((top + bottom) / (top - bottom));
+    float32 c = (-(far_depth + near_depth) / (far_depth - near_depth));
+    float32 d = (-((2.000000 * far_depth) * near_depth) / (far_depth - near_depth));
     return (mat4) {{x, 0, 0, 0}, {0, y, 0, 0}, {a, b, c, -1}, {0, 0, d, 0}};
 }
 static quat conj(quat q) {
     return (quat) {-q.x, -q.y, -q.z, q.w};
 }
 static quat normalize4(quat q) {
-    float32 l = sqrtf(((((q.x * q.x) + (q.y * q.y)) + (q.z * q.z)) + (q.w * q.w)))/*not constant*/;
+    float32 l = sqrtf(((((q.x * q.x) + (q.y * q.y)) + (q.z * q.z)) + (q.w * q.w)));
     return (quat) {(q.x / l), (q.y / l), (q.z / l), (q.w / l)};
 }
 static quat mul16(quat l, quat r) {
-    float32 a = l.w/*not constant*/;
-    float32 b = l.x/*not constant*/;
-    float32 c = l.y/*not constant*/;
-    float32 d = l.z/*not constant*/;
-    float32 e = r.w/*not constant*/;
-    float32 f = r.x/*not constant*/;
-    float32 g = r.y/*not constant*/;
-    float32 h = r.z/*not constant*/;
+    float32 a = l.w;
+    float32 b = l.x;
+    float32 c = l.y;
+    float32 d = l.z;
+    float32 e = r.w;
+    float32 f = r.x;
+    float32 g = r.y;
+    float32 h = r.z;
     return (quat) {((((b * e) + (a * f)) + (c * h)) - (d * g)), ((((a * g) - (b * h)) + (c * e)) + (d * f)), ((((a * h) + (b * g)) - (c * f)) + (d * e)), ((((a * e) - (b * f)) - (c * g)) - (d * h))};
 }
 static mat4 quat2matrix(quat q) {
-    float32 xx = (q.x * q.x)/*not constant*/;
-    float32 xy = (q.x * q.y)/*not constant*/;
-    float32 xz = (q.x * q.z)/*not constant*/;
-    float32 xw = (q.x * q.w)/*not constant*/;
-    float32 yy = (q.y * q.y)/*not constant*/;
-    float32 yz = (q.y * q.z)/*not constant*/;
-    float32 yw = (q.y * q.w)/*not constant*/;
-    float32 zz = (q.z * q.z)/*not constant*/;
-    float32 zw = (q.z * q.w)/*not constant*/;
+    float32 xx = (q.x * q.x);
+    float32 xy = (q.x * q.y);
+    float32 xz = (q.x * q.z);
+    float32 xw = (q.x * q.w);
+    float32 yy = (q.y * q.y);
+    float32 yz = (q.y * q.z);
+    float32 yw = (q.y * q.w);
+    float32 zz = (q.z * q.z);
+    float32 zw = (q.z * q.w);
     return (mat4) {(1.000000 - ((yy + zz) * 2.000000)), ((xy - zw) * 2.000000), ((xz + yw) * 2.000000), 0, ((xy + zw) * 2.000000), (1.000000 - ((xx + zz) * 2.000000)), ((yz - xw) * 2.000000), 0, ((xz - yw) * 2.000000), ((yz + xw) * 2.000000), (1.000000 - ((xx + yy) * 2.000000)), 0, 0, 0, 0, 1};
 }
 static vec2 right(Transform2D t) {
@@ -3718,8 +3690,8 @@ static vec2 local2world1(Transform2D t, vec2 p) {
     return local2world2(t, p.x, p.y);
 }
 static vec2 local2world2(Transform2D t, float32 x, float32 y) {
-    float32 c = (cosf(t.rot) * t.scale)/*not constant*/;
-    float32 s = (sinf(t.rot) * t.scale)/*not constant*/;
+    float32 c = (cosf(t.rot) * t.scale);
+    float32 s = (sinf(t.rot) * t.scale);
     vec2 res;
     res.x = (((c * x) + (s * y)) + t.pos.x);
     res.y = (((-s * x) + (c * y)) + t.pos.y);
@@ -3729,24 +3701,26 @@ static vec2 world2local1(Transform2D t, vec2 p) {
     return world2local2(t, p.x, p.y);
 }
 static vec2 world2local2(Transform2D t, float32 x, float32 y) {
-    float32 c = (cosf(t.rot) / t.scale)/*not constant*/;
-    float32 s = (sinf(t.rot) / t.scale)/*not constant*/;
-    float32 px = (x - t.pos.x)/*not constant*/;
-    float32 py = (y - t.pos.y)/*not constant*/;
+    float32 c = (cosf(t.rot) / t.scale);
+    float32 s = (sinf(t.rot) / t.scale);
+    float32 px = (x - t.pos.x);
+    float32 py = (y - t.pos.y);
     vec2 res;
     res.x = ((c * px) - (s * py));
     res.y = ((c * py) + (s * px));
     return res;
 }
 static Image load_bitmap(char* filename) {
-    typedef struct Header {
+    typedef struct Header Header;
+    struct Header {
         uint16 magic_num;
         uint32 file_bytesize;
         uint16 reserved1;
         uint16 reserved2;
         uint32 data_offset;
-    } Header;
-    typedef struct InfoHeader {
+    };
+    typedef struct InfoHeader InfoHeader;
+    struct InfoHeader {
         uint32 size;
         int32 width;
         int32 height;
@@ -3758,14 +3732,14 @@ static Image load_bitmap(char* filename) {
         int32 y_pixels_per_m;
         uint32 colors_used;
         uint32 important_colors;
-    } InfoHeader;
+    };
     printf("%s%llu%s", "Header size: ", sizeof(Header), "\n");
     printf("%s%llu%s", "InfoHeader size: ", sizeof(InfoHeader), "\n");
-    Header* head = (Header*)fileread2(filename, "rb")/*not constant*/;
-    InfoHeader* info = (InfoHeader*)((uint64)head + 14)/*not constant*/;
-    uint32 data_offset = *((uint32*)((uint64)head + 10))/*not constant*/;
-    void* data = (void*)((uint64)head + data_offset)/*not constant*/;
-    Color* color_table = (Color*)((uint64)head + 54)/*not constant*/;
+    Header* head = (Header*)fileread2(filename, "rb");
+    InfoHeader* info = (InfoHeader*)((uint64)head + 14);
+    uint32 data_offset = *((uint32*)((uint64)head + 10));
+    void* data = (void*)((uint64)head + data_offset);
+    Color* color_table = (Color*)((uint64)head + 54);
     printf("%s%u%s", "Data Offset: ", data_offset, "\n");
     printf("%c%c%s", (char)head->magic_num, (char)(head->magic_num >> 8), "\n");
     printf("%s%hu%s", "bits per pixel: ", info->bits_per_pixel, "\n");
@@ -3782,7 +3756,7 @@ static Image load_bitmap(char* filename) {
         break;
         case 8:
         {
-            uint8* bytes = data/*not constant*/;
+            uint8* bytes = data;
             for (int32 i = 0; i < (info->width * info->height); i++) {
                 image.pixels[i] = color_table[bytes[i]];
             }
@@ -3793,7 +3767,7 @@ static Image load_bitmap(char* filename) {
         break;
         case 24:
         {
-            ColorRgb* colors = data/*not constant*/;
+            ColorRgb* colors = data;
             for (int32 i = 0; i < (info->width * info->height); i++) {
                 image.pixels[i].r = colors[i].r;
                 image.pixels[i].g = colors[i].g;
@@ -3804,7 +3778,7 @@ static Image load_bitmap(char* filename) {
         break;
         case 32:
         {
-            Color* colors = data/*not constant*/;
+            Color* colors = data;
             for (int32 i = 0; i < (info->width * info->height); i++) {
                 image.pixels[i] = colors[i];
             }
@@ -3815,4 +3789,90 @@ static Image load_bitmap(char* filename) {
     }
     free(head);
     return image;
+}
+static int32 key1(char c) {
+    return glfwGetKey(main_window, (int32)c);
+}
+static int32 key2(int32 c) {
+    return glfwGetKey(main_window, c);
+}
+static int32 mouse(int32 btn) {
+    return glfwGetMouseButton(main_window, btn);
+}
+static void setup_vertex2D_attributes() {
+    vertex2D* v = 0;
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, 5126, 0, sizeof(vertex2D), &v->pos);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, 5126, 0, sizeof(vertex2D), &v->uv);
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 4, 5121, 1, sizeof(vertex2D), &v->color);
+}
+static void setup_vertex3D_attributes() {
+    /* local constant */
+    vertex3D* v = 0;
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, 5126, 0, sizeof(vertex3D), &v->pos);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, 5126, 0, sizeof(vertex3D), &v->normal);
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 2, 5126, 0, sizeof(vertex3D), &v->uv);
+}
+static DrawBuffers create_draw_buffers1(Mesh mesh) {
+    DrawBuffers db;
+    db.elements_count = 0;
+    glGenVertexArrays(1, &db.vao);
+    glBindVertexArray(db.vao);
+    glGenBuffers(1, &db.vbo);
+    glBindBuffer(34962, db.vbo);
+    glGenBuffers(1, &db.ebo);
+    glBindBuffer(34963, db.ebo);
+    glBufferData(34962, (mesh.vertices_count * sizeof(vertex3D)), mesh.vertices, 35044);
+    glBufferData(34963, (mesh.indices_count * sizeof(uint32)), mesh.indices, 35044);
+    setup_vertex3D_attributes();
+    glBindVertexArray(0);
+    glBindBuffer(34962, 0);
+    return db;
+}
+static DrawBuffers create_draw_buffers2() {
+    DrawBuffers db;
+    db.elements_count = 0;
+    glGenVertexArrays(1, &db.vao);
+    glBindVertexArray(db.vao);
+    glGenBuffers(1, &db.vbo);
+    glBindBuffer(34962, db.vbo);
+    glGenBuffers(1, &db.ebo);
+    glBindBuffer(34963, db.ebo);
+    setup_vertex2D_attributes();
+    glBindVertexArray(0);
+    glBindBuffer(34962, 0);
+    return db;
+}
+static void update_buffers(DrawBuffers* db, vertex2D* vertices, uint32 vertices_count, uint32* indices, uint32 indices_count) {
+    db->elements_count = (int32)indices_count;
+    update_buffer(db->vbo, (vertices_count * (uint32)(sizeof(vertex2D))), vertices);
+    update_buffer(db->ebo, (indices_count * (uint32)(sizeof(uint32))), indices);
+}
+static void update_buffer(uint32 buffer, uint32 size, void* data) {
+    glBindBuffer(34962, buffer);
+    glBufferData(34962, size, data, 35044);
+    glBindBuffer(34962, 0);
+}
+static void draw_elements1(DrawBuffers db) {
+    glBindVertexArray(db.vao);
+    glDrawElements(4, db.elements_count, 5125, 0);
+    glBindVertexArray(0);
+}
+static void draw_elements2(DrawBuffers db, uint32 instanceCount) {
+    glBindVertexArray(db.vao);
+    glDrawElementsInstanced(4, db.elements_count, 5125, 0, instanceCount);
+    glBindVertexArray(0);
+}
+static void __static_init() {
+    num_str = malloc(20);
+}
+int main(int argc, char** argv) {
+    __static_init();
+    __main();
+    return 0;
 }

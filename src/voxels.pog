@@ -9,7 +9,7 @@ struct VoxelGrid {
     uint32 inds_outline_ebo;
 
     uint32 numVerts;
-    vertex* verts;
+    vertex2D* verts;
     uint32* inds; // list
     uint32* inds_outline; // list
 }
@@ -43,19 +43,19 @@ VoxelGrid createVoxelGrid(uint32 res) {
     // grid.transform.scale = 1;
 
     grid.res = res;
-    grid.data = alloc float32[res * res];
+    grid.data = malloc(res * res * sizeof float32);
 
     //              3r^2 - 2r
     grid.numVerts = 3 * grid.res * grid.res - 2 * grid.res;
-    grid.verts = alloc vertex[grid.numVerts];
+    grid.verts = malloc(grid.numVerts * sizeof vertex2D);
 
     float32 half = grid.res as float32 / 2.0;
 
     for uint32 x : 0 .. grid.res {
         for uint32 y : 0 .. grid.res {
             let i = getIndex(grid.res, x, y);
-            grid.verts[i].x = x as float32 - half;
-            grid.verts[i].y = y as float32 - half;
+            grid.verts[i].pos.x = x as float32 - half;
+            grid.verts[i].pos.y = y as float32 - half;
         }
     }
 
@@ -238,8 +238,8 @@ void updateGridMesh(VoxelGrid* grid) {
                 else        ofs = 1.0 - p2;
 
                 let i = g1_byteoffset + x * size + y;
-                grid.verts[i].x = x - half;
-                grid.verts[i].y = y + ofs - half;
+                grid.verts[i].pos.x = x - half;
+                grid.verts[i].pos.y = y + ofs - half;
             }
         }
 
@@ -258,8 +258,8 @@ void updateGridMesh(VoxelGrid* grid) {
                 else        ofs = 1.0 - p2;
 
                 let i = g2_byteoffset + x * grid.res + y;
-                grid.verts[i].x = x + ofs - half;
-                grid.verts[i].y = y - half;
+                grid.verts[i].pos.x = x + ofs - half;
+                grid.verts[i].pos.y = y - half;
             }
         }
     }
