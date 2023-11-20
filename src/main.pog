@@ -22,21 +22,20 @@ include "../grax/grax.pog";
 Shader shader;
 Transform2D camera;
 
-VoxelGrid voxelGrid;
 float32 voxel_edit_radius = 1;
 DrawBuffers voxelMesh_circle;
 
 Texture2D player_texture;
 Texture2D random_texture;
 
-void applyCamera() {
+void apply_camera() {
     glUniform1f(glGetUniformLocation(shader.gl_handle, "zoom"), camera.scale);
     glUniform2f(glGetUniformLocation(shader.gl_handle, "cam_pos"), camera.pos.x, camera.pos.y);
     glUniform1f(glGetUniformLocation(shader.gl_handle, "cam_rot"), camera.rot);
 }
 
 
-void applyTransform(Transform2D t) {
+void apply_transform(Transform2D t) {
     glUniform2f(glGetUniformLocation(shader.gl_handle, "entity_pos"), t.pos.x, t.pos.y);
     glUniform1f(glGetUniformLocation(shader.gl_handle, "entity_rot"), t.rot);
     glUniform1f(glGetUniformLocation(shader.gl_handle, "entity_scale"), t.scale);
@@ -57,161 +56,7 @@ vec2 rotate_vec(vec2 dir, float32 angle) {
 }
 
 
-const entitiesCapacity = 256;
-int32 entitiesLength = 0;
-Entity* entities;
-Entity* player;
-
-struct Entity {
-    Transform2D transform;
-    DrawBuffers db;
-    vec2 vel;
-}
-
-const planetsCount = 16;
-Planet* planets;
-
-Entity* appendEntity(DrawBuffers db) {
-    if entitiesLength >= entitiesCapacity {
-        print("Failed to append entity. Max limit reached.");
-        return null;
-    }
-
-    let res = *entities[entitiesLength++];
-    res.transform.pos = make_vec(0, 0);
-    res.transform.scale = 1;
-    res.transform.rot = 0;
-    res.db = db;
-    res.vel = make_vec(0, 0);
-    return res;
-}
-
-
-DrawBuffers genCircle(int32 res, float32 radius) {
-    uint32 vertsCount = res as uint32 + 1;
-    vertex2D* verts = malloc(vertsCount * sizeof vertex2D);
-    verts[0].pos.x = 0;
-    verts[0].pos.y = 0;
-
-    for i : 1 .. res + 1 {
-        float32 angle = i * Tau / res;
-        verts[i].pos.x = cosf(angle) * radius;
-        verts[i].pos.y = sinf(angle) * radius;
-
-        verts[i].color = White;
-    }
-
-    uint32 indsCount = (res as uint32) * 3;
-    uint32* inds = malloc(indsCount * sizeof uint32);
-    uint32 i = 0;
-    uint32 v = 1;
-    while i < indsCount {
-        inds[i] = 0;
-        inds[i+1] = v++;
-        inds[i+2] = v;
-        i += 3;
-    }
-
-    inds[i - 1] = 1;
-
-    let db = create_draw_buffers();
-    update_buffers(*db, verts, vertsCount, inds, indsCount);
-    free(verts);
-    free(inds);
-    return db;
-}
-
-Planet genPlanet(float32 radius, float32 dist, float32 year) {
-    Planet p;
-    p.radius = radius;
-    p.dist = dist;
-    p.yearDuration = year;
-    p.db = genCircle(round2int(36 * radius), radius);
-    p.rot = 0.0;
-    p.orbitOffset = Pi * random(dist as int32);
-
-    return p;
-}
-
-void drawPlanet(Planet* planet) {
-    glUniform2f(glGetUniformLocation(shader.gl_handle, "entity_pos"), planet.pos.x, planet.pos.y);
-    glUniform1f(glGetUniformLocation(shader.gl_handle, "entity_rot"), planet.rot);
-    draw_elements(planet.db);
-}
-
-struct Planet {
-    DrawBuffers db;
-    vec2 pos;
-    float32 rot;
-    float32 radius;
-    float32 dist;
-    float32 yearDuration;
-    float32 orbitOffset;
-}
-
-void updateEntity(Entity* entity) {
-    entity.transform.pos = add(entity.transform.pos, entity.vel);
-
-    for i : 0 .. planetsCount {
-        Planet* planet = *planets[i];
-
-        vec2 diff = sub(entity.transform.pos, planet.pos);
-        vec2 normal = normalize(diff);
-
-        float32 intersection = length(diff) - planet.radius; // NOTE: we can neglect the entitys radius because its always 1.0
-
-        float32 planetArea = Pi * planet.radius * planet.radius;
-        float32 planetMass = planetArea; // assuming the same uniform mass-density on all planets.
-        vec2 gravity = mul(normal, planetMass / sqlength(diff) * -0.000003);
-        // entity.vel = add(entity.vel, gravity);
-
-        if (intersection <= 0.0) {
-
-            vec2 correction = mul(normal, -intersection);
-            entity.transform.pos = add(entity.transform.pos, correction);
-
-            // entity.vel = reflect(entity.vel, normal); // bounce
-            entity.vel = add(entity.vel, mul(normal, -dot(entity.vel, normal))); // cancel velocity in direction of surface
-        }
-    }
-
-    Intersection intersection;
-    if point_intersects(entity.transform.pos, *voxelGrid, *intersection) {
-        vec2 normal = intersection.surface_normal;
-        vec2 correction = mul(normal, -intersection.distance);
-
-        entity.transform.pos = add(entity.transform.pos, correction);
-
-        entity.vel = add(entity.vel, mul(normal, -dot(entity.vel, normal))); // cancel velocity in direction of surface
-    }
-
-
-}
-
-vec2 getMouseWorldCoord() {
-    float64 cx;
-    float64 cy;
-    glfwGetCursorPos(main_window, *cx, *cy);
-
-    int32 w;
-    int32 h;
-    glfwGetFramebufferSize(main_window, *w, *h);
-
-    float32 x = cx as float32 / w * 2 - 1;
-    float32 y = -(cy as float32 / h * 2 - 1);
-
-    x *= w as float32 / h;  // 16.0 / 9.0;
-
-    // float32 c = cosf(camera.rot) * camera.zoom;
-    // float32 s = sinf(camera.rot) * camera.zoom;
-    // vec2 res;
-    // res.x = c*x + s*y + camera.pos.x;
-    // res.y = -s*x + c*y + camera.pos.y;
-    let res = local2world(camera, x, y);
-    return res;
-}
-
-void mouse_scrollCallback(GLFWwindow* w, float64 x, float64 y) {
+void on_mouse_scroll(GLFWwindow* w, float64 x, float64 y) {
     let s = y as float32;
     if key(GLFW_KEY_LEFT_CONTROL) {
         voxel_edit_radius += s * 0.1;
@@ -219,6 +64,14 @@ void mouse_scrollCallback(GLFWwindow* w, float64 x, float64 y) {
     } else {
         camera.scale -= camera.scale * s * 0.1;
         camera.scale = clamp(camera.scale, 1.0, 10000.0);
+    }
+}
+
+void on_key_input(GLFWwindow* window, int32 key, int32 scancode, int32 action, int32 mods) {
+    if action == GLFW_PRESS {
+        switch key {
+            case GLFW_KEY_F11: toggle_fullscreen(main_window); break;
+        }
     }
 }
 
@@ -231,6 +84,10 @@ Texture2D load_texture(char* file_name) {
 }
 
 void load() {
+
+    glfwSetScrollCallback(main_window, on_mouse_scroll);
+    glfwSetKeyCallback(main_window, on_key_input);
+
 
     { // load shader
         let f = fileread("shaders/frag.glsl");
@@ -274,76 +131,15 @@ void load() {
         free(image.pixels);
     }
 
-    camera.rot = 0;
-    camera.scale = 40;
-
-    glfwSetScrollCallback(main_window, mouse_scrollCallback);
-
-    entities = malloc(sizeof(Entity) * entitiesCapacity);
-    planets = malloc(sizeof(Planet) * planetsCount);
-
-    for i : 0 .. planetsCount {
-        float32 r = 20.0 + random(i as int32);
-        Planet p = genPlanet(r,
-                            70.0 + r * 30.0 * i,
-                            100.0 + 20.0 * random(2 * i + 100));
-        planets[i] = p;
-    }
-
-
-    player = appendEntity(genCircle(4, 0.1f));
-
-    voxelGrid = generatePlanet();
-    voxelGrid.transform.pos = make_vec(-20, 30);
-    // voxelGrid.transform.rot = Pi / 3;
+    world_init();
 
     voxelMesh_circle = genCircle(360, 1);
-}
-
-VoxelGrid generatePlanet() {
-    VoxelGrid grid = createVoxelGrid(100);
-    grid.transform.scale = 1;
-
-    float32 half = grid.res as float32 / 2;
-
-    for uint32 x : 0 .. grid.res {
-        for uint32 y : 0 .. grid.res {
-            float32 xf = x as float32 - half;
-            float32 yf = y as float32 - half;
-            float32 len = sqrtf(xf*xf + yf*yf);
-            const scale = 4.0;
-            let h = (gnoise(100 + xf / len * scale, 100 + yf / len * scale) + 1.0) / 2.0;
-            h *= 10;
-            h += 30;
-
-            uint32 i = x * grid.res + y;
-
-            grid.data[i] = clamp(h - len, 0, 1);
-
-            // grid.data[i] = clamp(40 - len, 0, 1);
-
-            // if len < 40 grid.data[i] = clamp(random(i as int32), 0, 1);
-            // else grid.data[i] = 0;
-        }
-    }
-
-    updateGridMesh(*grid);
-    return grid;
-}
-
-void on_key_input(GLFWwindow* window, int32 key, int32 scancode, int32 action, int32 mods) {
-    if action == GLFW_PRESS {
-        switch key {
-            case GLFW_KEY_F11: toggle_fullscreen(main_window); break;
-        }
-    }
 }
 
 int32 main() {
 
     grax_init();
 
-    glfwSetKeyCallback(main_window, on_key_input);
 
     load();
 
@@ -361,95 +157,6 @@ int32 main() {
         // bind(player_texture);
         bind(random_texture);
 
-
-        vec2 wasd;
-        wasd.x = 0f;
-        wasd.y = 0f;
-        if key('W') wasd.y += 1f;
-        if key('S') wasd.y -= 1f;
-        if key('A') wasd.x -= 1f;
-        if key('D') wasd.x += 1f;
-        // if (wasd.x != 0.0f or wasd.y != 0.0f) {
-        //     vec2Normalize(&wasd);
-        // }
-
-        if key('F') { player.vel.x = 0.0; player.vel.y = 0.0; }
-
-        float32 c = cosf(player.transform.rot);
-        float32 s = sinf(player.transform.rot);
-        vec2 dir = make_vec(dot(make_vec(c, s), wasd), dot(make_vec(-s, c), wasd));
-
-        player.vel = add(player.vel, mul(dir, 0.01));
-
-        float32 time = glfwGetTime() as float32;
-        time = 0.0;
-        for i : 0 .. planetsCount {
-            Planet* planet = *planets[i];
-            float32 t = Pi * 2.0;
-            planet.pos.x = cosf(planet.orbitOffset + t * time / planet.yearDuration) * planet.dist;
-            planet.pos.y = sinf(planet.orbitOffset + t * time / planet.yearDuration) * planet.dist;
-            drawPlanet(planet);
-        }
-
-        draw_text({0, 0} as vec2, 0.1, make_string("Hello"), White);
-
-
-        for i : 0 .. entitiesLength {
-            let e = *entities[i];
-            updateEntity(e);
-        }
-
-
-
-        if key('Q') camera.rot -= 0.05;
-        if key('E') camera.rot += 0.05;
-
-        camera.pos = player.transform.pos;
-        player.transform.rot = camera.rot;
-        applyCamera();
-
-        for i : 0 .. entitiesLength {
-            let e = *entities[i];
-            applyTransform(e.transform);
-            draw_elements(e.db);
-        }
-
-
-        { // voxels
-
-            // voxelGrid.transform.rot += 0.0002;
-
-            let mouseCoord = getMouseWorldCoord();
-
-            uniform_entity_pos(mouseCoord);
-            uniform_entity_scale(voxel_edit_radius);
-            draw_elements(voxelMesh_circle);
-
-            Intersection intersection;
-            if point_intersects(mouseCoord, *voxelGrid, *intersection) {
-                print("Intersects ", intersection.distance, "\n");
-            }
-
-            if mouse(Left_Mouse) {
-                VoxelGrid_addCircle(*voxelGrid, voxel_edit_radius, mouseCoord.x, mouseCoord.y);
-                updateGridMesh(*voxelGrid);
-            } else if mouse(Right_Mouse) {
-                VoxelGrid_removeCircle(*voxelGrid, voxel_edit_radius, mouseCoord.x, mouseCoord.y);
-                updateGridMesh(*voxelGrid);
-            }
-
-            applyTransform(voxelGrid.transform);
-            draw_elements(voxelGrid.db);
-
-            // Draw vertices as points
-            glBindVertexArray(voxelGrid.db.vao);
-            glDrawArrays(GL_POINTS, 0, voxelGrid.numVerts as int32);
-
-            // draw outline
-            // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, voxelGrid.inds_outline_ebo);
-            // glDrawElements(GL_LINES, list_length(voxelGrid.inds_outline), GL_UNSIGNED_INT, null);
-            // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, voxelGrid.db.ebo);
-            // glBindVertexArray(0);
-        }
+        world_update();
     }
 }

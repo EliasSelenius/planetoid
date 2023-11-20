@@ -1,0 +1,295 @@
+
+struct Entity {
+    Transform2D transform;
+    DrawBuffers db;
+    vec2 vel;
+}
+
+struct Planet {
+    VoxelGrid grid;
+    Transform2D transform;
+
+    float32 radius;
+    float32 dist;
+    float32 yearDuration;
+    float32 orbitOffset;
+}
+
+
+const entitiesCapacity = 256;
+int32 entitiesLength = 0;
+Entity* entities;
+Entity* player;
+
+
+const planetsCount = 9;
+Planet* planets;
+
+
+Entity* appendEntity(DrawBuffers db) {
+    if entitiesLength >= entitiesCapacity {
+        print("Failed to append entity. Max limit reached.");
+        return null;
+    }
+
+    let res = *entities[entitiesLength++];
+    res.transform.pos = make_vec(0, 0);
+    res.transform.scale = 1;
+    res.transform.rot = 0;
+    res.db = db;
+    res.vel = make_vec(0, 0);
+    return res;
+}
+
+void updateEntity(Entity* entity) {
+    entity.transform.pos = add(entity.transform.pos, entity.vel);
+
+    for i : 0 .. planetsCount {
+        Planet* planet = *planets[i];
+
+        vec2 diff = sub(planet.transform.pos, entity.transform.pos);
+        vec2 normal = normalize(diff);
+
+        float32 planetArea = Pi * planet.radius * planet.radius;
+        float32 planetMass = planetArea; // assuming the same uniform mass-density on all planets.
+        vec2 gravity = mul(normal, planetMass / sqlength(diff) * -0.000003);
+        // entity.vel = add(entity.vel, gravity);
+
+        check_collision(planet, entity);
+    }
+
+}
+
+void check_collision(Planet* planet, Entity* entity) {
+    Intersection intersection;
+    if point_intersects(entity.transform.pos, *planet.grid, planet.transform, *intersection) {
+
+        vec2 normal = intersection.surface_normal;
+        vec2 correction = mul(normal, -intersection.distance);
+        entity.transform.pos = add(entity.transform.pos, correction);
+
+        // entity.vel = reflect(entity.vel, normal); // bounce
+        entity.vel = add(entity.vel, mul(normal, -dot(entity.vel, normal))); // cancel velocity in direction of surface
+    }
+}
+
+DrawBuffers genCircle(int32 res, float32 radius) {
+    uint32 vertsCount = res as uint32 + 1;
+    vertex2D* verts = malloc(vertsCount * sizeof vertex2D);
+    verts[0].pos.x = 0;
+    verts[0].pos.y = 0;
+
+    for i : 1 .. res + 1 {
+        float32 angle = i * Tau / res;
+        verts[i].pos.x = cosf(angle) * radius;
+        verts[i].pos.y = sinf(angle) * radius;
+
+        verts[i].color = White;
+    }
+
+    uint32 indsCount = (res as uint32) * 3;
+    uint32* inds = malloc(indsCount * sizeof uint32);
+    uint32 i = 0;
+    uint32 v = 1;
+    while i < indsCount {
+        inds[i] = 0;
+        inds[i+1] = v++;
+        inds[i+2] = v;
+        i += 3;
+    }
+
+    inds[i - 1] = 1;
+
+    let db = create_draw_buffers();
+    update_buffers(*db, verts, vertsCount, inds, indsCount);
+    free(verts);
+    free(inds);
+    return db;
+}
+
+void draw_planet(Planet* planet) {
+    apply_transform(planet.transform);
+    draw_elements(planet.grid.db);
+
+
+    // Draw vertices as points
+    glBindVertexArray(planet.grid.db.vao);
+    glDrawArrays(GL_POINTS, 0, planet.grid.numVerts as int32);
+
+    // draw outline
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, voxelGrid.inds_outline_ebo);
+    // glDrawElements(GL_LINES, list_length(voxelGrid.inds_outline), GL_UNSIGNED_INT, null);
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, voxelGrid.db.ebo);
+    // glBindVertexArray(0);
+
+
+    // { // voxels
+    //     let mouseCoord = getMouseWorldCoord();
+
+    //     uniform_entity_pos(mouseCoord);
+    //     uniform_entity_scale(voxel_edit_radius);
+    //     draw_elements(voxelMesh_circle);
+
+    //     Intersection intersection;
+    //     if point_intersects(mouseCoord, *voxelGrid, *intersection) {
+    //         print("Intersects ", intersection.distance, "\n");
+    //     }
+
+    //     if mouse(Left_Mouse) {
+    //         VoxelGrid_addCircle(*voxelGrid, voxel_edit_radius, mouseCoord.x, mouseCoord.y);
+    //         updateGridMesh(*voxelGrid);
+    //     } else if mouse(Right_Mouse) {
+    //         VoxelGrid_removeCircle(*voxelGrid, voxel_edit_radius, mouseCoord.x, mouseCoord.y);
+    //         updateGridMesh(*voxelGrid);
+    //     }
+    // }
+
+}
+
+Planet generate_planet(float32 radius, float32 dist) {
+    Planet p;
+    p.transform.scale = 1;
+    p.radius = radius;
+    p.dist = dist;
+    p.yearDuration = powf(dist, 3.0/2.0) * 0.0001;
+    p.grid = generate_planet_grid(*p);
+    // p.orbitOffset = Pi * random(dist as int32);
+    p.orbitOffset = 0;
+
+    return p;
+}
+
+VoxelGrid generate_planet_grid(Planet* planet) {
+    const radius2gridsize_ratio = 10.0 / 4.0;
+    uint32 grid_size = (planet.radius * radius2gridsize_ratio) as uint32;
+    VoxelGrid grid = createVoxelGrid(grid_size);
+
+    float32 half = grid.res as float32 / 2;
+
+    for uint32 x : 0 .. grid.res {
+        for uint32 y : 0 .. grid.res {
+            float32 xf = x as float32 - half;
+            float32 yf = y as float32 - half;
+            float32 len = sqrtf(xf*xf + yf*yf);
+            const scale = 4.0;
+            float32 offset = planet.dist;
+            let h = (gnoise(offset + xf / len * scale, offset + yf / len * scale) + 1.0) / 2.0;
+            h *= planet.radius / 3.0;
+            h = planet.radius - h;
+
+            uint32 i = x * grid.res + y;
+            grid.data[i] = clamp(h - len, 0, 1);
+
+            // grid.data[i] = clamp(40 - len, 0, 1);
+
+            // if len < 40 grid.data[i] = clamp(random(i as int32), 0, 1);
+            // else grid.data[i] = 0;
+        }
+    }
+
+    updateGridMesh(*grid);
+    return grid;
+}
+
+void update_player() {
+    vec2 wasd;
+    wasd.x = 0;
+    wasd.y = 0;
+    if key('W') wasd.y += 1;
+    if key('S') wasd.y -= 1;
+    if key('A') wasd.x -= 1;
+    if key('D') wasd.x += 1;
+    // if (wasd.x != 0.0f or wasd.y != 0.0f) {
+    //     vec2Normalize(&wasd);
+    // }
+    float32 qe = 0;
+    if key('Q') qe -= 1;
+    if key('E') qe += 1;
+
+
+    if key('F') { player.vel.x = 0.0; player.vel.y = 0.0; }
+
+    float32 c = cosf(player.transform.rot);
+    float32 s = sinf(player.transform.rot);
+    vec2 dir = make_vec(dot(make_vec(c, s), wasd), dot(make_vec(-s, c), wasd));
+
+    player.vel = add(player.vel, mul(dir, 0.01));
+
+
+    player.transform.rot += qe * 0.05;
+
+    camera.pos = player.transform.pos;
+    camera.rot = player.transform.rot;
+    apply_camera();
+}
+
+void world_init() {
+    camera.rot = 0;
+    camera.scale = 400;
+
+    entities = malloc(sizeof(Entity) * entitiesCapacity);
+    planets = malloc(sizeof(Planet) * planetsCount);
+
+    for i : 0 .. planetsCount {
+        float32 r = 30.0 + random(i as int32) * 20;
+        Planet p = generate_planet(r, 1000 + 100 * i);
+        planets[i] = p;
+    }
+
+    player = appendEntity(genCircle(4, 0.1f));
+    player.transform.pos = {1000, 0};
+}
+
+void world_update() {
+
+    float32 time = glfwGetTime() as float32; // TODO: implement time, deltatime and timescale in grax
+    // time += 10000.0;
+    time = 0;
+    for i : 0 .. planetsCount {
+        Planet* planet = *planets[i];
+        float32 t = Pi * 2.0;
+        planet.transform.pos.x = cosf(planet.orbitOffset + t * time / planet.yearDuration) * planet.dist;
+        planet.transform.pos.y = sinf(planet.orbitOffset + t * time / planet.yearDuration) * planet.dist;
+        draw_planet(planet);
+    }
+
+    // draw_text({0, 0} as vec2, 0.1, make_string("Hello"), White);
+
+
+    for i : 0 .. entitiesLength {
+        let e = *entities[i];
+        updateEntity(e);
+    }
+
+    update_player();
+
+    for i : 0 .. entitiesLength {
+        let e = *entities[i];
+        apply_transform(e.transform);
+        draw_elements(e.db);
+    }
+
+}
+
+vec2 getMouseWorldCoord() {
+    float64 cx;
+    float64 cy;
+    glfwGetCursorPos(main_window, *cx, *cy);
+
+    int32 w;
+    int32 h;
+    glfwGetFramebufferSize(main_window, *w, *h);
+
+    float32 x = cx as float32 / w * 2 - 1;
+    float32 y = -(cy as float32 / h * 2 - 1);
+
+    x *= w as float32 / h;  // 16.0 / 9.0;
+
+    // float32 c = cosf(camera.rot) * camera.zoom;
+    // float32 s = sinf(camera.rot) * camera.zoom;
+    // vec2 res;
+    // res.x = c*x + s*y + camera.pos.x;
+    // res.y = -s*x + c*y + camera.pos.y;
+    let res = local2world(camera, x, y);
+    return res;
+}

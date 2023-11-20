@@ -14,12 +14,12 @@ int printf(const char* format, ...);
 typedef struct Array { void* data; uint32 length; } Array;
 
 // Structs forward declarations
-typedef struct Entity Entity;
-typedef struct Planet Planet;
 typedef struct VoxelGrid VoxelGrid;
 typedef struct Intersection Intersection;
 typedef struct Lineseg Lineseg;
 typedef struct Ray Ray;
+typedef struct Entity Entity;
+typedef struct Planet Planet;
 typedef struct List List;
 typedef struct GLFWvidmode GLFWvidmode;
 typedef struct GLFWgammaramp GLFWgammaramp;
@@ -749,6 +749,16 @@ struct DrawBuffers {
     uint32 ebo;
     int32 elements_count;
 };
+struct VoxelGrid {
+    float32* data;
+    uint32 res;
+    DrawBuffers db;
+    uint32 inds_outline_ebo;
+    uint32 numVerts;
+    vertex2D* verts;
+    uint32* inds;
+    uint32* inds_outline;
+};
 struct Intersection {
     vec2 surface_normal;
     float32 distance;
@@ -757,15 +767,6 @@ struct Transform2D {
     vec2 pos;
     float32 rot;
     float32 scale;
-};
-struct Planet {
-    DrawBuffers db;
-    vec2 pos;
-    float32 rot;
-    float32 radius;
-    float32 dist;
-    float32 yearDuration;
-    float32 orbitOffset;
 };
 struct Lineseg {
     vec2 start;
@@ -786,17 +787,6 @@ struct Mesh {
     uint32 indices_count;
     vec3 bb_min;
     vec3 bb_max;
-};
-struct VoxelGrid {
-    Transform2D transform;
-    float32* data;
-    uint32 res;
-    DrawBuffers db;
-    uint32 inds_outline_ebo;
-    uint32 numVerts;
-    vertex2D* verts;
-    uint32* inds;
-    uint32* inds_outline;
 };
 struct mat3 {
     vec3 row1;
@@ -823,6 +813,14 @@ struct Entity {
     DrawBuffers db;
     vec2 vel;
 };
+struct Planet {
+    VoxelGrid grid;
+    Transform2D transform;
+    float32 radius;
+    float32 dist;
+    float32 yearDuration;
+    float32 orbitOffset;
+};
 struct mat4 {
     vec4 row1;
     vec4 row2;
@@ -831,38 +829,40 @@ struct mat4 {
 };
 
 // Forward declarations
-static void init_gizmos();
-static void dispatch_gizmos();
-static void applyCamera();
-static void applyTransform(Transform2D t);
+static void apply_camera();
+static void apply_transform(Transform2D t);
 static void uniform_entity_pos(vec2 pos);
 static void uniform_entity_rot(float32 rot);
 static void uniform_entity_scale(float32 scale);
 static vec2 rotate_vec(vec2 dir, float32 angle);
-static Entity* appendEntity(DrawBuffers db);
-static DrawBuffers genCircle(int32 res, float32 radius);
-static Planet genPlanet(float32 radius, float32 dist, float32 year);
-static void drawPlanet(Planet* planet);
-static void updateEntity(Entity* entity);
 static vec2 getMouseWorldCoord();
-static void mouse_scrollCallback(GLFWwindow* w, float64 x, float64 y);
+static void on_mouse_scroll(GLFWwindow* w, float64 x, float64 y);
+static void on_key_input(GLFWwindow* window, int32 key, int32 scancode, int32 action, int32 mods);
 static Texture2D load_texture(char* file_name);
 static void load();
-static VoxelGrid generatePlanet();
-static void on_key_input(GLFWwindow* window, int32 key, int32 scancode, int32 action, int32 mods);
 int32 __main();
 static void add_tri(VoxelGrid* grid, uint32 i1, uint32 i2, uint32 i3);
 static void add_outline(VoxelGrid* grid, uint32 i1, uint32 i2);
 static uint32 getIndex(uint32 res, uint32 x, uint32 y);
 static VoxelGrid createVoxelGrid(uint32 res);
 static void updateGridMesh(VoxelGrid* grid);
-static vec2 getLocalCoords(VoxelGrid* grid, float32 x, float32 y);
-static void VoxelGrid_addCircle(VoxelGrid* grid, float32 radius, float32 x, float32 y);
-static void VoxelGrid_removeCircle(VoxelGrid* grid, float32 radius, float32 x, float32 y);
+static vec2 getLocalCoords(VoxelGrid* grid, Transform2D transform, float32 x, float32 y);
+static void add_circle(VoxelGrid* grid, Transform2D transform, float32 radius, float32 x, float32 y);
+static void remove_circle(VoxelGrid* grid, Transform2D transform, float32 radius, float32 x, float32 y);
 static vec2 calcCenterOfMass(VoxelGrid* grid);
 static vec2 rot90deg(vec2 v);
 static int32 ray_lineseg_intersects(Ray ray, Lineseg seg, Intersection* out_intersection);
-static int32 point_intersects(vec2 point, VoxelGrid* grid, Intersection* out_intersection);
+static int32 point_intersects(vec2 point, VoxelGrid* grid, Transform2D transform, Intersection* out_intersection);
+static Entity* appendEntity(DrawBuffers db);
+static void updateEntity(Entity* entity);
+static void check_collision(Planet* planet, Entity* entity);
+static DrawBuffers genCircle(int32 res, float32 radius);
+static void draw_planet(Planet* planet);
+static Planet generate_planet(float32 radius, float32 dist);
+static VoxelGrid generate_planet_grid(Planet* planet);
+static void update_player();
+static void world_init();
+static void world_update();
 int32 fopen_s(FILE** stream, char* filename, char* mode);
 int32 fclose(FILE* stream);
 int32 fseek(FILE* stream, int32 offset, int32 origin);
@@ -876,6 +876,7 @@ void free(void* block);
 void* realloc(void* buffer, uint64 size);
 void* memcpy(void* dst, void* src, uint64 size);
 uint64 strlen(char* str);
+void exit(int32 code);
 static char* fileread1(char* filename);
 static char* fileread2(char* filename, char* mode);
 static void filewrite(char* filename, char* content);
@@ -1055,6 +1056,8 @@ float32 tanf(float32 t);
 float64 sqrt(float64 x);
 float32 sqrtf(float32 x);
 float32 floorf(float32 x);
+float64 pow(float64 b, float64 e);
+float32 powf(float32 b, float32 e);
 static float32 random(int32 seed);
 static vec2 random_vec2(float32 x, float32 y);
 static float32 gnoise(float32 x, float32 y);
@@ -1152,12 +1155,8 @@ static void draw_elements1(DrawBuffers db);
 static void draw_elements2(DrawBuffers db, uint32 instanceCount);
 
 // Declarations
-static uint32 debug_lines_vao;
-static uint32 debug_lines_vbo;
-static vertex2D* debug_lines_vertices;
 static Shader shader;
 static Transform2D camera;
-static VoxelGrid voxelGrid;
 static float32 voxel_edit_radius = 1;
 static DrawBuffers voxelMesh_circle;
 static Texture2D player_texture;
@@ -1713,17 +1712,12 @@ static uint32* immediate_indices;
 static char* num_str;
 
 // Implementations
-static void init_gizmos() {
-    debug_lines_vertices = list_create((uint32)sizeof(vertex2D));
-}
-static void dispatch_gizmos() {
-}
-static void applyCamera() {
+static void apply_camera() {
     glUniform1f(glGetUniformLocation(shader.gl_handle, "zoom"), camera.scale);
     glUniform2f(glGetUniformLocation(shader.gl_handle, "cam_pos"), camera.pos.x, camera.pos.y);
     glUniform1f(glGetUniformLocation(shader.gl_handle, "cam_rot"), camera.rot);
 }
-static void applyTransform(Transform2D t) {
+static void apply_transform(Transform2D t) {
     glUniform2f(glGetUniformLocation(shader.gl_handle, "entity_pos"), t.pos.x, t.pos.y);
     glUniform1f(glGetUniformLocation(shader.gl_handle, "entity_rot"), t.rot);
     glUniform1f(glGetUniformLocation(shader.gl_handle, "entity_scale"), t.scale);
@@ -1745,86 +1739,6 @@ static vec2 rotate_vec(vec2 dir, float32 angle) {
     res.y = ((-s * dir.x) + (c * dir.y));
     return res;
 }
-static Entity* appendEntity(DrawBuffers db) {
-    if (entitiesLength >= 256) {
-        printf("%s", "Failed to append entity. Max limit reached.");
-        return 0;
-    }
-    Entity* res = &entities[entitiesLength++];
-    res->transform.pos = make_vec1(0, 0);
-    res->transform.scale = 1;
-    res->transform.rot = 0;
-    res->db = db;
-    res->vel = make_vec1(0, 0);
-    return res;
-}
-static DrawBuffers genCircle(int32 res, float32 radius) {
-    uint32 vertsCount = ((uint32)res + 1);
-    vertex2D* verts = malloc((vertsCount * sizeof(vertex2D)));
-    verts[0].pos.x = 0;
-    verts[0].pos.y = 0;
-    for (int32 i = 1; i < (res + 1); i++) {
-        float32 angle = ((i * (3.141593 * 2.000000)) / res);
-        verts[i].pos.x = (cosf(angle) * radius);
-        verts[i].pos.y = (sinf(angle) * radius);
-        verts[i].color = (Color){255, 255, 255, 255};
-    }
-    uint32 indsCount = (((uint32)res) * 3);
-    uint32* inds = malloc((indsCount * sizeof(uint32)));
-    uint32 i = 0;
-    uint32 v = 1;
-    while (i < indsCount) {
-        inds[i] = 0;
-        inds[(i + 1)] = v++;
-        inds[(i + 2)] = v;
-        i += 3;
-    }
-    inds[(i - 1)] = 1;
-    DrawBuffers db = create_draw_buffers2();
-    update_buffers(&db, verts, vertsCount, inds, indsCount);
-    free(verts);
-    free(inds);
-    return db;
-}
-static Planet genPlanet(float32 radius, float32 dist, float32 year) {
-    Planet p;
-    p.radius = radius;
-    p.dist = dist;
-    p.yearDuration = year;
-    p.db = genCircle(round2int((36 * radius)), radius);
-    p.rot = 0.000000;
-    p.orbitOffset = (3.141593 * random((int32)dist));
-    return p;
-}
-static void drawPlanet(Planet* planet) {
-    glUniform2f(glGetUniformLocation(shader.gl_handle, "entity_pos"), planet->pos.x, planet->pos.y);
-    glUniform1f(glGetUniformLocation(shader.gl_handle, "entity_rot"), planet->rot);
-    draw_elements1(planet->db);
-}
-static void updateEntity(Entity* entity) {
-    entity->transform.pos = add1(entity->transform.pos, entity->vel);
-    for (int32 i = 0; i < 16; i++) {
-        Planet* planet = &planets[i];
-        vec2 diff = sub1(entity->transform.pos, planet->pos);
-        vec2 normal = normalize1(diff);
-        float32 intersection = (length1(diff) - planet->radius);
-        float32 planetArea = ((3.141593 * planet->radius) * planet->radius);
-        float32 planetMass = planetArea;
-        vec2 gravity = mul2(normal, ((planetMass / sqlength1(diff)) * -0.000003));
-        if (intersection <= 0.000000) {
-            vec2 correction = mul2(normal, -intersection);
-            entity->transform.pos = add1(entity->transform.pos, correction);
-            entity->vel = add1(entity->vel, mul2(normal, -dot1(entity->vel, normal)));
-        }
-    }
-    Intersection intersection;
-    if (point_intersects(entity->transform.pos, &voxelGrid, &intersection)) {
-        vec2 normal = intersection.surface_normal;
-        vec2 correction = mul2(normal, -intersection.distance);
-        entity->transform.pos = add1(entity->transform.pos, correction);
-        entity->vel = add1(entity->vel, mul2(normal, -dot1(entity->vel, normal)));
-    }
-}
 static vec2 getMouseWorldCoord() {
     float64 cx;
     float64 cy;
@@ -1838,7 +1752,7 @@ static vec2 getMouseWorldCoord() {
     vec2 res = local2world2(camera, x, y);
     return res;
 }
-static void mouse_scrollCallback(GLFWwindow* w, float64 x, float64 y) {
+static void on_mouse_scroll(GLFWwindow* w, float64 x, float64 y) {
     float32 s = (float32)y;
     if (key2(341)) {
         voxel_edit_radius += (s * 0.100000);
@@ -1846,6 +1760,15 @@ static void mouse_scrollCallback(GLFWwindow* w, float64 x, float64 y) {
     } else {
         camera.scale -= ((camera.scale * s) * 0.100000);
         camera.scale = clamp2(camera.scale, 1.000000, 10000.000000);
+    }
+}
+static void on_key_input(GLFWwindow* window, int32 key, int32 scancode, int32 action, int32 mods) {
+    if (action == 1) {
+        switch (key) {
+            case 300:
+            toggle_fullscreen(main_window);
+            break;
+        }
     }
 }
 static Texture2D load_texture(char* file_name) {
@@ -1856,6 +1779,8 @@ static Texture2D load_texture(char* file_name) {
     return tex;
 }
 static void load() {
+    glfwSetScrollCallback(main_window, on_mouse_scroll);
+    glfwSetKeyCallback(main_window, on_key_input);
     {
         char* f = fileread1("shaders/frag.glsl");
         char* v = fileread1("shaders/vert.glsl");
@@ -1883,53 +1808,11 @@ static void load() {
         set_filter(random_texture, 9728);
         free(image.pixels);
     }
-    camera.rot = 0;
-    camera.scale = 40;
-    glfwSetScrollCallback(main_window, mouse_scrollCallback);
-    entities = malloc((sizeof(Entity) * 256));
-    planets = malloc((sizeof(Planet) * 16));
-    for (int32 i = 0; i < 16; i++) {
-        float32 r = (20.000000 + random((int32)i));
-        Planet p = genPlanet(r, (70.000000 + ((r * 30.000000) * i)), (100.000000 + (20.000000 * random(((2 * i) + 100)))));
-        planets[i] = p;
-    }
-    player = appendEntity(genCircle(4, 0.100000));
-    voxelGrid = generatePlanet();
-    voxelGrid.transform.pos = make_vec1(-20, 30);
+    world_init();
     voxelMesh_circle = genCircle(360, 1);
-}
-static VoxelGrid generatePlanet() {
-    VoxelGrid grid = createVoxelGrid(100);
-    grid.transform.scale = 1;
-    float32 half = ((float32)grid.res / 2);
-    for (uint32 x = 0; x < grid.res; x++) {
-        for (uint32 y = 0; y < grid.res; y++) {
-            float32 xf = ((float32)x - half);
-            float32 yf = ((float32)y - half);
-            float32 len = sqrtf(((xf * xf) + (yf * yf)));
-            /* local constant */
-            float32 h = ((gnoise((100 + ((xf / len) * 4.000000)), (100 + ((yf / len) * 4.000000))) + 1.000000) / 2.000000);
-            h *= 10;
-            h += 30;
-            uint32 i = ((x * grid.res) + y);
-            grid.data[i] = clamp2((h - len), 0, 1);
-        }
-    }
-    updateGridMesh(&grid);
-    return grid;
-}
-static void on_key_input(GLFWwindow* window, int32 key, int32 scancode, int32 action, int32 mods) {
-    if (action == 1) {
-        switch (key) {
-            case 300:
-            toggle_fullscreen(main_window);
-            break;
-        }
-    }
 }
 int32 __main() {
     grax_init();
-    glfwSetKeyCallback(main_window, on_key_input);
     load();
     {
         char* version = (char*)glGetString(7938);
@@ -1940,66 +1823,7 @@ int32 __main() {
     while (grax_loop()) {
         use(&shader);
         bind(random_texture);
-        vec2 wasd;
-        wasd.x = 0;
-        wasd.y = 0;
-        if (key1('W')) wasd.y += 1;
-        if (key1('S')) wasd.y -= 1;
-        if (key1('A')) wasd.x -= 1;
-        if (key1('D')) wasd.x += 1;
-        if (key1('F')) {
-            player->vel.x = 0.000000;
-            player->vel.y = 0.000000;
-        }
-        float32 c = cosf(player->transform.rot);
-        float32 s = sinf(player->transform.rot);
-        vec2 dir = make_vec1(dot1(make_vec1(c, s), wasd), dot1(make_vec1(-s, c), wasd));
-        player->vel = add1(player->vel, mul2(dir, 0.010000));
-        float32 time = (float32)glfwGetTime();
-        time = 0.000000;
-        for (int32 i = 0; i < 16; i++) {
-            Planet* planet = &planets[i];
-            float32 t = (3.141593 * 2.000000);
-            planet->pos.x = (cosf((planet->orbitOffset + ((t * time) / planet->yearDuration))) * planet->dist);
-            planet->pos.y = (sinf((planet->orbitOffset + ((t * time) / planet->yearDuration))) * planet->dist);
-            drawPlanet(planet);
-        }
-        draw_text1((vec2){0, 0}, 0.100000, make_string("Hello"), (Color){255, 255, 255, 255});
-        for (int32 i = 0; i < entitiesLength; i++) {
-            Entity* e = &entities[i];
-            updateEntity(e);
-        }
-        if (key1('Q')) camera.rot -= 0.050000;
-        if (key1('E')) camera.rot += 0.050000;
-        camera.pos = player->transform.pos;
-        player->transform.rot = camera.rot;
-        applyCamera();
-        for (int32 i = 0; i < entitiesLength; i++) {
-            Entity* e = &entities[i];
-            applyTransform(e->transform);
-            draw_elements1(e->db);
-        }
-        {
-            vec2 mouseCoord = getMouseWorldCoord();
-            uniform_entity_pos(mouseCoord);
-            uniform_entity_scale(voxel_edit_radius);
-            draw_elements1(voxelMesh_circle);
-            Intersection intersection;
-            if (point_intersects(mouseCoord, &voxelGrid, &intersection)) {
-                printf("%s%f%s", "Intersects ", intersection.distance, "\n");
-            }
-            if (mouse(0)) {
-                VoxelGrid_addCircle(&voxelGrid, voxel_edit_radius, mouseCoord.x, mouseCoord.y);
-                updateGridMesh(&voxelGrid);
-            } else if (mouse(1)) {
-                VoxelGrid_removeCircle(&voxelGrid, voxel_edit_radius, mouseCoord.x, mouseCoord.y);
-                updateGridMesh(&voxelGrid);
-            }
-            applyTransform(voxelGrid.transform);
-            draw_elements1(voxelGrid.db);
-            glBindVertexArray(voxelGrid.db.vao);
-            glDrawArrays(0, 0, (int32)voxelGrid.numVerts);
-        }
+        world_update();
     }
 }
 static void add_tri(VoxelGrid* grid, uint32 i1, uint32 i2, uint32 i3) {
@@ -2016,8 +1840,6 @@ static uint32 getIndex(uint32 res, uint32 x, uint32 y) {
 }
 static VoxelGrid createVoxelGrid(uint32 res) {
     VoxelGrid grid;
-    grid.transform.pos = make_vec1(0, 0);
-    grid.transform.rot = 0;
     grid.res = res;
     grid.data = malloc(((res * res) * sizeof(float32)));
     grid.numVerts = (((3 * grid.res) * grid.res) - (2 * grid.res));
@@ -2201,15 +2023,15 @@ static void updateGridMesh(VoxelGrid* grid) {
     update_buffers(&grid->db, grid->verts, grid->numVerts, grid->inds, list_length(grid->inds));
     update_buffer(grid->inds_outline_ebo, (list_length(grid->inds_outline) * (uint32)sizeof(uint32)), grid->inds_outline);
 }
-static vec2 getLocalCoords(VoxelGrid* grid, float32 x, float32 y) {
-    vec2 p = world2local2(grid->transform, x, y);
+static vec2 getLocalCoords(VoxelGrid* grid, Transform2D transform, float32 x, float32 y) {
+    vec2 p = world2local2(transform, x, y);
     float32 half = ((float32)grid->res / 2.000000);
     p.x += half;
     p.y += half;
     return p;
 }
-static void VoxelGrid_addCircle(VoxelGrid* grid, float32 radius, float32 x, float32 y) {
-    vec2 p = getLocalCoords(grid, x, y);
+static void add_circle(VoxelGrid* grid, Transform2D transform, float32 radius, float32 x, float32 y) {
+    vec2 p = getLocalCoords(grid, transform, x, y);
     int32 rx = round2int(p.x);
     int32 ry = round2int(p.y);
     int32 iradius = (int32)(radius + 1);
@@ -2228,8 +2050,8 @@ static void VoxelGrid_addCircle(VoxelGrid* grid, float32 radius, float32 x, floa
         }
     }
 }
-static void VoxelGrid_removeCircle(VoxelGrid* grid, float32 radius, float32 x, float32 y) {
-    vec2 p = getLocalCoords(grid, x, y);
+static void remove_circle(VoxelGrid* grid, Transform2D transform, float32 radius, float32 x, float32 y) {
+    vec2 p = getLocalCoords(grid, transform, x, y);
     int32 rx = round2int(p.x);
     int32 ry = round2int(p.y);
     int32 iradius = (int32)(radius + 1);
@@ -2278,9 +2100,9 @@ static int32 ray_lineseg_intersects(Ray ray, Lineseg seg, Intersection* out_inte
     float32 d2 = dot1(B, tangent);
     return 0;
 }
-static int32 point_intersects(vec2 point, VoxelGrid* grid, Intersection* out_intersection) {
+static int32 point_intersects(vec2 point, VoxelGrid* grid, Transform2D transform, Intersection* out_intersection) {
     *out_intersection = (Intersection){0};
-    point = getLocalCoords(grid, point.x, point.y);
+    point = getLocalCoords(grid, transform, point.x, point.y);
     int32 x = (int32)point.x;
     int32 y = (int32)point.y;
     if ((x < 0) || (x >= grid->res)) return 0;
@@ -2361,9 +2183,167 @@ static int32 point_intersects(vec2 point, VoxelGrid* grid, Intersection* out_int
     vec2 normal = rot90deg(sub1(b, a));
     normal = normalize1(normal);
     out_intersection->distance = dot1(normal, local);
-    out_intersection->surface_normal = rotate_vec(normal, grid->transform.rot);
+    out_intersection->surface_normal = rotate_vec(normal, transform.rot);
     if (out_intersection->distance <= 0) return 1;
     return 0;
+}
+static Entity* appendEntity(DrawBuffers db) {
+    if (entitiesLength >= 256) {
+        printf("%s", "Failed to append entity. Max limit reached.");
+        return 0;
+    }
+    Entity* res = &entities[entitiesLength++];
+    res->transform.pos = make_vec1(0, 0);
+    res->transform.scale = 1;
+    res->transform.rot = 0;
+    res->db = db;
+    res->vel = make_vec1(0, 0);
+    return res;
+}
+static void updateEntity(Entity* entity) {
+    entity->transform.pos = add1(entity->transform.pos, entity->vel);
+    for (int32 i = 0; i < 9; i++) {
+        Planet* planet = &planets[i];
+        vec2 diff = sub1(planet->transform.pos, entity->transform.pos);
+        vec2 normal = normalize1(diff);
+        float32 planetArea = ((3.141593 * planet->radius) * planet->radius);
+        float32 planetMass = planetArea;
+        vec2 gravity = mul2(normal, ((planetMass / sqlength1(diff)) * -0.000003));
+        check_collision(planet, entity);
+    }
+}
+static void check_collision(Planet* planet, Entity* entity) {
+    Intersection intersection;
+    if (point_intersects(entity->transform.pos, &planet->grid, planet->transform, &intersection)) {
+        vec2 normal = intersection.surface_normal;
+        vec2 correction = mul2(normal, -intersection.distance);
+        entity->transform.pos = add1(entity->transform.pos, correction);
+        entity->vel = add1(entity->vel, mul2(normal, -dot1(entity->vel, normal)));
+    }
+}
+static DrawBuffers genCircle(int32 res, float32 radius) {
+    uint32 vertsCount = ((uint32)res + 1);
+    vertex2D* verts = malloc((vertsCount * sizeof(vertex2D)));
+    verts[0].pos.x = 0;
+    verts[0].pos.y = 0;
+    for (int32 i = 1; i < (res + 1); i++) {
+        float32 angle = ((i * (3.141593 * 2.000000)) / res);
+        verts[i].pos.x = (cosf(angle) * radius);
+        verts[i].pos.y = (sinf(angle) * radius);
+        verts[i].color = (Color){255, 255, 255, 255};
+    }
+    uint32 indsCount = (((uint32)res) * 3);
+    uint32* inds = malloc((indsCount * sizeof(uint32)));
+    uint32 i = 0;
+    uint32 v = 1;
+    while (i < indsCount) {
+        inds[i] = 0;
+        inds[(i + 1)] = v++;
+        inds[(i + 2)] = v;
+        i += 3;
+    }
+    inds[(i - 1)] = 1;
+    DrawBuffers db = create_draw_buffers2();
+    update_buffers(&db, verts, vertsCount, inds, indsCount);
+    free(verts);
+    free(inds);
+    return db;
+}
+static void draw_planet(Planet* planet) {
+    apply_transform(planet->transform);
+    draw_elements1(planet->grid.db);
+    glBindVertexArray(planet->grid.db.vao);
+    glDrawArrays(0, 0, (int32)planet->grid.numVerts);
+}
+static Planet generate_planet(float32 radius, float32 dist) {
+    Planet p;
+    p.transform.scale = 1;
+    p.radius = radius;
+    p.dist = dist;
+    p.yearDuration = (powf(dist, (3.000000 / 2.000000)) * 0.000100);
+    p.grid = generate_planet_grid(&p);
+    p.orbitOffset = 0;
+    return p;
+}
+static VoxelGrid generate_planet_grid(Planet* planet) {
+    /* local constant */
+    uint32 grid_size = (uint32)(planet->radius * (10.000000 / 4.000000));
+    VoxelGrid grid = createVoxelGrid(grid_size);
+    float32 half = ((float32)grid.res / 2);
+    for (uint32 x = 0; x < grid.res; x++) {
+        for (uint32 y = 0; y < grid.res; y++) {
+            float32 xf = ((float32)x - half);
+            float32 yf = ((float32)y - half);
+            float32 len = sqrtf(((xf * xf) + (yf * yf)));
+            /* local constant */
+            float32 offset = planet->dist;
+            float32 h = ((gnoise((offset + ((xf / len) * 4.000000)), (offset + ((yf / len) * 4.000000))) + 1.000000) / 2.000000);
+            h *= (planet->radius / 3.000000);
+            h = (planet->radius - h);
+            uint32 i = ((x * grid.res) + y);
+            grid.data[i] = clamp2((h - len), 0, 1);
+        }
+    }
+    updateGridMesh(&grid);
+    return grid;
+}
+static void update_player() {
+    vec2 wasd;
+    wasd.x = 0;
+    wasd.y = 0;
+    if (key1('W')) wasd.y += 1;
+    if (key1('S')) wasd.y -= 1;
+    if (key1('A')) wasd.x -= 1;
+    if (key1('D')) wasd.x += 1;
+    float32 qe = 0;
+    if (key1('Q')) qe -= 1;
+    if (key1('E')) qe += 1;
+    if (key1('F')) {
+        player->vel.x = 0.000000;
+        player->vel.y = 0.000000;
+    }
+    float32 c = cosf(player->transform.rot);
+    float32 s = sinf(player->transform.rot);
+    vec2 dir = make_vec1(dot1(make_vec1(c, s), wasd), dot1(make_vec1(-s, c), wasd));
+    player->vel = add1(player->vel, mul2(dir, 0.010000));
+    player->transform.rot += (qe * 0.050000);
+    camera.pos = player->transform.pos;
+    camera.rot = player->transform.rot;
+    apply_camera();
+}
+static void world_init() {
+    camera.rot = 0;
+    camera.scale = 400;
+    entities = malloc((sizeof(Entity) * 256));
+    planets = malloc((sizeof(Planet) * 9));
+    for (int32 i = 0; i < 9; i++) {
+        float32 r = (30.000000 + (random((int32)i) * 20));
+        Planet p = generate_planet(r, (1000 + (100 * i)));
+        planets[i] = p;
+    }
+    player = appendEntity(genCircle(4, 0.100000));
+    player->transform.pos = (vec2) {1000, 0};
+}
+static void world_update() {
+    float32 time = (float32)glfwGetTime();
+    time = 0;
+    for (int32 i = 0; i < 9; i++) {
+        Planet* planet = &planets[i];
+        float32 t = (3.141593 * 2.000000);
+        planet->transform.pos.x = (cosf((planet->orbitOffset + ((t * time) / planet->yearDuration))) * planet->dist);
+        planet->transform.pos.y = (sinf((planet->orbitOffset + ((t * time) / planet->yearDuration))) * planet->dist);
+        draw_planet(planet);
+    }
+    for (int32 i = 0; i < entitiesLength; i++) {
+        Entity* e = &entities[i];
+        updateEntity(e);
+    }
+    update_player();
+    for (int32 i = 0; i < entitiesLength; i++) {
+        Entity* e = &entities[i];
+        apply_transform(e->transform);
+        draw_elements1(e->db);
+    }
 }
 static char* fileread1(char* filename) {
     return fileread2(filename, "r");
