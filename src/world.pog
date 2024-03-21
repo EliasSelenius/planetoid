@@ -244,7 +244,7 @@ void world_update() {
 
     float32 time = glfwGetTime() as float32; // TODO: implement time, deltatime and timescale in grax
     // time += 10000.0;
-    time = 0;
+    // time = 0;
     for i : 0 .. planetsCount {
         Planet* planet = *planets[i];
         float32 t = Pi * 2.0;

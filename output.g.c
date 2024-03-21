@@ -20,6 +20,7 @@ typedef struct Lineseg Lineseg;
 typedef struct Ray Ray;
 typedef struct Entity Entity;
 typedef struct Planet Planet;
+typedef struct FileInfo FileInfo;
 typedef struct List List;
 typedef struct GLFWvidmode GLFWvidmode;
 typedef struct GLFWgammaramp GLFWgammaramp;
@@ -31,6 +32,7 @@ typedef struct Framebuffer Framebuffer;
 typedef struct Texture2D Texture2D;
 typedef struct Color Color;
 typedef struct ColorRgb ColorRgb;
+typedef struct UBO UBO;
 typedef struct Shader Shader;
 typedef struct vec2 vec2;
 typedef struct ivec2 ivec2;
@@ -44,16 +46,19 @@ typedef struct mat4 mat4;
 typedef struct quat quat;
 typedef struct Transform Transform;
 typedef struct Transform2D Transform2D;
+typedef struct Camera Camera;
 typedef struct Image Image;
 typedef struct vertex3D vertex3D;
 typedef struct vertex2D vertex2D;
 typedef struct Mesh Mesh;
 typedef struct DrawBuffers DrawBuffers;
+typedef struct GizmoPoint GizmoPoint;
 
 // Enums
 
 // Type aliases
 typedef struct FILE FILE;
+typedef void (*enumerate_files_callback)(FileInfo, void*);
 typedef int64 GLintptr;
 typedef int64 GLint64;
 typedef uint64 GLuint64;
@@ -642,6 +647,13 @@ typedef void (*GLFWmonitorfun)(GLFWmonitor*, int32);
 typedef void (*GLFWjoystickfun)(int32, int32);
 
 // Structs
+struct FileInfo {
+    char* name;
+    uint64 size;
+    uint64 creation_time;
+    uint64 last_access_time;
+    uint64 last_write_time;
+};
 struct List {
     uint32 stride;
     uint32 capacity;
@@ -763,6 +775,11 @@ struct Intersection {
     vec2 surface_normal;
     float32 distance;
 };
+struct UBO {
+    string name;
+    uint32 binding_point;
+    uint32 buffer_id;
+};
 struct Transform2D {
     vec2 pos;
     float32 rot;
@@ -787,6 +804,10 @@ struct Mesh {
     uint32 indices_count;
     vec3 bb_min;
     vec3 bb_max;
+};
+struct GizmoPoint {
+    vec3 pos;
+    Color color;
 };
 struct mat3 {
     vec3 row1;
@@ -827,6 +848,14 @@ struct mat4 {
     vec4 row3;
     vec4 row4;
 };
+struct Camera {
+    Transform transform;
+    float32 fov;
+    float32 near_plane;
+    float32 far_plane;
+    mat4 view;
+    mat4 projection;
+};
 
 // Forward declarations
 static void apply_camera();
@@ -835,7 +864,6 @@ static void uniform_entity_pos(vec2 pos);
 static void uniform_entity_rot(float32 rot);
 static void uniform_entity_scale(float32 scale);
 static vec2 rotate_vec(vec2 dir, float32 angle);
-static vec2 getMouseWorldCoord();
 static void on_mouse_scroll(GLFWwindow* w, float64 x, float64 y);
 static void on_key_input(GLFWwindow* window, int32 key, int32 scancode, int32 action, int32 mods);
 static Texture2D load_texture(char* file_name);
@@ -863,6 +891,7 @@ static VoxelGrid generate_planet_grid(Planet* planet);
 static void update_player();
 static void world_init();
 static void world_update();
+static vec2 getMouseWorldCoord();
 int32 fopen_s(FILE** stream, char* filename, char* mode);
 int32 fclose(FILE* stream);
 int32 fseek(FILE* stream, int32 offset, int32 origin);
@@ -880,6 +909,9 @@ void exit(int32 code);
 static char* fileread1(char* filename);
 static char* fileread2(char* filename, char* mode);
 static void filewrite(char* filename, char* content);
+void enumerate_files(char* file_query, enumerate_files_callback callback, void* user_data);
+FileInfo* get_all_files(char* file_query);
+void print_file(FileInfo info, void* user_data);
 static void* list_create(uint32 stride);
 static List* list_head(void* list);
 static void list_clear(void* list);
@@ -1005,8 +1037,10 @@ int32 glfwVulkanSupported();
 char** glfwGetRequiredInstanceExtensions(uint32* count);
 static string make_string(char* c_str);
 static uint64 parse_int(string str);
-static string to_string(uint64 num);
+static string to_string1(uint64 num);
 static int32 string_equals(string a, string b);
+static int32 starts_with(char* text, char* start);
+static string substr_until(char* str, char delim);
 static int32 is_whitespace(char c);
 static int32 is_upper_case_letter(char c);
 static int32 is_lower_case_letter(char c);
@@ -1015,6 +1049,9 @@ static int32 is_digit(char c);
 static int32 is_hexdigit(char c);
 static int32 is_alphanumeric(char c);
 static int32 is_punctuation(char c);
+static int32 is_whitespace_or_empty(string str);
+static int32 lev(string a, string b);
+static string to_string2(StringBuilder sb);
 static StringBuilder sb_create();
 static void sb_free(StringBuilder sb);
 static void sb_grow(StringBuilder* sb, uint32 len);
@@ -1032,10 +1069,16 @@ static void opengl_debug_callback(GLenum source, GLenum _type, GLuint id, GLenum
 static GLFWmonitor* get_ideal_monitor(GLFWwindow* window);
 static void toggle_fullscreen(GLFWwindow* window);
 static Color rgba(uint32 i);
+static Color color_from_vec(vec3 v);
 static Texture2D create_texture2D(Image image);
 static void bind(Texture2D tex);
 static void set_filter(Texture2D tex, uint32 filter);
 static void use(Shader* s);
+static UBO* get_ubo(string name);
+static void bind_ubos(Shader* s);
+static void process_glsl_source(StringBuilder* sb, char* filename);
+static Shader load_shader1(char* filename);
+static Shader load_shader2(char* frag_filename, char* vert_filename);
 static Shader create_shader(char* fragsrc, char* vertsrc);
 static void dispatch_immediate();
 static void immediate_vertex1(float32 x, float32 y, float32 u, float32 v);
@@ -1048,11 +1091,17 @@ static vec2 draw_text1(vec2 pos, float32 size, string text, Color color);
 static vec2 draw_text_backwards(vec2 pos, float32 size, string text, Color color);
 static vec2 draw_text2(vec2 pos, float32 size, char* text);
 float64 sin(float64 t);
+float64 asin(float64 t);
 float32 sinf(float32 t);
+float32 asinf(float32 t);
 float64 cos(float64 t);
+float64 acos(float64 t);
 float32 cosf(float32 t);
+float32 acosf(float32 t);
 float64 tan(float64 t);
+float64 atan(float64 t);
 float32 tanf(float32 t);
+float32 atanf(float32 t);
 float64 sqrt(float64 x);
 float32 sqrtf(float32 x);
 float32 floorf(float32 x);
@@ -1107,6 +1156,10 @@ static float32 length3(vec4 a);
 static vec4 normalize3(vec4 a);
 static vec4 reflect3(vec4 a, vec4 normal);
 static vec4 lerp4(float32 t, vec4 a, vec4 b);
+static vec2 xy1(vec3 a);
+static vec2 xy2(vec4 a);
+static vec3 xyz(vec4 a);
+static mat2 mat2_identity();
 static vec2 col11(mat2 m);
 static vec2 col21(mat2 m);
 static mat2 transpose1(mat2 m);
@@ -1114,6 +1167,7 @@ static float32 det(mat2 m);
 static mat2 mul7(mat2 a, mat2 b);
 static vec2 mul8(mat2 m, vec2 v);
 static vec2 mul9(vec2 v, mat2 m);
+static mat3 mat3_identity();
 static vec3 col12(mat3 m);
 static vec3 col22(mat3 m);
 static vec3 col31(mat3 m);
@@ -1121,6 +1175,7 @@ static mat3 transpose2(mat3 m);
 static mat3 mul10(mat3 a, mat3 b);
 static vec3 mul11(mat3 m, vec3 v);
 static vec3 mul12(vec3 v, mat3 m);
+static mat4 mat4_identity();
 static vec4 col13(mat4 m);
 static vec4 col23(mat4 m);
 static vec4 col32(mat4 m);
@@ -1133,18 +1188,36 @@ static mat4 perspective(float32 fovy, float32 aspect, float32 near_depth, float3
 static mat4 perspective_off_center(float32 left, float32 right, float32 bottom, float32 top, float32 near_depth, float32 far_depth);
 static quat conj(quat q);
 static quat normalize4(quat q);
-static quat mul16(quat l, quat r);
+static quat sub4(quat a, quat b);
+static quat add4(quat a, quat b);
+static quat mul16(quat a, float32 s);
+static quat lerp5(float32 t, quat a, quat b);
+static quat nlerp(float32 t, quat a, quat b);
+static quat mul17(quat l, quat r);
+static quat axisangle2quat(vec3 axis, float32 angle);
 static mat4 quat2matrix(quat q);
+static mat4 to_matrix(Transform t);
+static Transform transform_default();
+static void rotate1(Transform* tr, quat q);
+static void rotate2(Transform* tr, vec3 axis, float32 angle);
+static void translate(Transform* tr, vec3 t);
+static void look_at(Transform* tr, vec3 target, vec3 up);
+static Transform2D lerp6(float32 t, Transform2D a, Transform2D b);
 static vec2 right(Transform2D t);
 static vec2 up(Transform2D t);
 static vec2 local2world1(Transform2D t, vec2 p);
 static vec2 local2world2(Transform2D t, float32 x, float32 y);
 static vec2 world2local1(Transform2D t, vec2 p);
 static vec2 world2local2(Transform2D t, float32 x, float32 y);
+static Camera camera(float32 fov, float32 near, float32 far);
+static void update_matrices(Camera* cam);
 static Image load_bitmap(char* filename);
 static int32 key1(char c);
 static int32 key2(int32 c);
 static int32 mouse(int32 btn);
+static void input_update();
+static void enable_cursor();
+static void disable_cursor();
 static void setup_vertex2D_attributes();
 static void setup_vertex3D_attributes();
 static DrawBuffers create_draw_buffers1(Mesh mesh);
@@ -1153,6 +1226,12 @@ static void update_buffers(DrawBuffers* db, vertex2D* vertices, uint32 vertices_
 static void update_buffer(uint32 buffer, uint32 size, void* data);
 static void draw_elements1(DrawBuffers db);
 static void draw_elements2(DrawBuffers db, uint32 instanceCount);
+static void gizmo_setup();
+static void gizmo_dispatch();
+static void gizmo_point1(vec3 pos);
+static void gizmo_point2(vec3 pos, Color color);
+static void gizmo_transform1(Transform* tr);
+static void gizmo_transform2(Transform2D* tr);
 
 // Declarations
 static Shader shader;
@@ -1703,12 +1782,28 @@ static GLFWwindow* main_window;
 static float32 main_window_width = 1600;
 static float32 main_window_height = 900;
 static float32 main_window_aspect;
+static float64 time;
+static float64 deltatime;
+static float64 sim_speed = 1.000000;
 static Shader* active_shader;
 static Shader immediate_shader;
 static DrawBuffers immediate_buffer;
 static Texture2D text_atlas;
 static vertex2D* immediate_vertices;
 static uint32* immediate_indices;
+static float64 mouse_x = 0;
+static float64 mouse_y = 0;
+static float64 pmouse_x = 0;
+static float64 pmouse_y = 0;
+static float64 dmouse_x = 0;
+static float64 dmouse_y = 0;
+static vec2 wasd;
+static GizmoPoint* gizmo_points_list;
+static Color gizmo_current_color = (Color){255, 255, 255, 255};
+static uint32 gizmo_points_vbo;
+static uint32 gizmo_points_vao;
+static Shader gizmo_points_shader;
+static UBO* uniform_buffer_objects;
 static char* num_str;
 
 // Implementations
@@ -1737,19 +1832,6 @@ static vec2 rotate_vec(vec2 dir, float32 angle) {
     vec2 res;
     res.x = ((c * dir.x) + (s * dir.y));
     res.y = ((-s * dir.x) + (c * dir.y));
-    return res;
-}
-static vec2 getMouseWorldCoord() {
-    float64 cx;
-    float64 cy;
-    glfwGetCursorPos(main_window, &cx, &cy);
-    int32 w;
-    int32 h;
-    glfwGetFramebufferSize(main_window, &w, &h);
-    float32 x = ((((float32)cx / w) * 2) - 1);
-    float32 y = -((((float32)cy / h) * 2) - 1);
-    x *= ((float32)w / h);
-    vec2 res = local2world2(camera, x, y);
     return res;
 }
 static void on_mouse_scroll(GLFWwindow* w, float64 x, float64 y) {
@@ -2326,7 +2408,6 @@ static void world_init() {
 }
 static void world_update() {
     float32 time = (float32)glfwGetTime();
-    time = 0;
     for (int32 i = 0; i < 9; i++) {
         Planet* planet = &planets[i];
         float32 t = (3.141593 * 2.000000);
@@ -2344,6 +2425,19 @@ static void world_update() {
         apply_transform(e->transform);
         draw_elements1(e->db);
     }
+}
+static vec2 getMouseWorldCoord() {
+    float64 cx;
+    float64 cy;
+    glfwGetCursorPos(main_window, &cx, &cy);
+    int32 w;
+    int32 h;
+    glfwGetFramebufferSize(main_window, &w, &h);
+    float32 x = ((((float32)cx / w) * 2) - 1);
+    float32 y = -((((float32)cy / h) * 2) - 1);
+    x *= ((float32)w / h);
+    vec2 res = local2world2(camera, x, y);
+    return res;
 }
 static char* fileread1(char* filename) {
     return fileread2(filename, "r");
@@ -2954,7 +3048,7 @@ static uint64 parse_int(string str) {
     }
     return res;
 }
-static string to_string(uint64 num) {
+static string to_string1(uint64 num) {
     // static decl
     if (num == 0) return (string){"0", 1};
     uint32 i = 20;
@@ -2970,8 +3064,23 @@ static int32 string_equals(string a, string b) {
     for (int32 i = 0; i < a.length; i++) if (a.chars[i] != b.chars[i]) return 0;
     return 1;
 }
+static int32 starts_with(char* text, char* start) {
+    int32 i = 0;
+    while (start[i]) {
+        if (start[i] != text[i]) return 0;
+        i++;
+    }
+    return 1;
+}
+static string substr_until(char* str, char delim) {
+    string res = (string) {str, 0};
+    uint32 i = 0;
+    while (str[i] && (str[i] != delim)) i++;
+    res.length = i;
+    return res;
+}
 static int32 is_whitespace(char c) {
-    return ((c == ' ') || (c == '\n'));
+    return (((c == ' ') || (c == '\n')) || (c == '\t'));
 }
 static int32 is_upper_case_letter(char c) {
     return ((c >= 'A') && (c <= 'Z'));
@@ -2993,6 +3102,28 @@ static int32 is_alphanumeric(char c) {
 }
 static int32 is_punctuation(char c) {
     return (((((c >= '!') && (c <= '/')) || ((c >= ':') && (c <= '@'))) || ((c >= '[') && (c <= '`'))) || ((c >= '{') && (c <= '~')));
+}
+static int32 is_whitespace_or_empty(string str) {
+    for (int32 it = 0; it < str.length; it++) {
+        if (!is_whitespace(str.chars[it])) return 0;
+    }
+    return 1;
+}
+static string tail(string str) {
+    return (string){((uint64)str.chars + 1), (str.length - 1)};
+}
+static int32 lev(string a, string b) {
+    // local procedure
+    if (a.length == 0) return (int32)b.length;
+    if (b.length == 0) return (int32)a.length;
+    if (a.chars[0] == b.chars[0]) return lev(tail(a), tail(b));
+    int32 i = lev(tail(a), b);
+    i = min(i, lev(a, tail(b)));
+    i = min(i, lev(tail(a), tail(b)));
+    return (i + 1);
+}
+static string to_string2(StringBuilder sb) {
+    return (string){sb.content, sb.length};
 }
 static StringBuilder sb_create() {
     StringBuilder sb;
@@ -3067,6 +3198,9 @@ static int32 grax_loop() {
         glfwTerminate();
         return 0;
     }
+    input_update();
+    deltatime = ((1.000000 / 60.000000) * sim_speed);
+    time += deltatime;
     glClear(16384);
     return 1;
 }
@@ -3075,6 +3209,9 @@ static void grax_init() {
         printf("%s", "ERROR: failed to initilize glfw.\n");
         return;
     }
+    glfwWindowHint(139266, 4);
+    glfwWindowHint(139267, 6);
+    glfwWindowHint(139272, 204801);
     main_window = glfwCreateWindow((int32)main_window_width, (int32)main_window_height, "Grax", 0, 0);
     main_window_aspect = (main_window_height / main_window_width);
     if (!main_window) {
@@ -3098,11 +3235,7 @@ static void grax_init() {
         immediate_buffer = create_draw_buffers2();
     }
     {
-        char* fragsrc = fileread1("../grax/shaders/frag.glsl");
-        char* vertsrc = fileread1("../grax/shaders/vert.glsl");
-        immediate_shader = create_shader(fragsrc, vertsrc);
-        free(fragsrc);
-        free(vertsrc);
+        immediate_shader = load_shader2("../grax/shaders/frag.glsl", "../grax/shaders/vert.glsl");
     }
     Image image = load_bitmap("../grax/CascadiaMono.bmp");
     text_atlas = create_texture2D(image);
@@ -3189,6 +3322,14 @@ static Color rgba(uint32 i) {
     c.a = b[0];
     return c;
 }
+static Color color_from_vec(vec3 v) {
+    Color c;
+    c.r = (uint8)(v.x * 255);
+    c.g = (uint8)(v.y * 255);
+    c.b = (uint8)(v.z * 255);
+    c.a = 255;
+    return c;
+}
 static Texture2D create_texture2D(Image image) {
     Texture2D tex;
     tex.width = image.width;
@@ -3218,22 +3359,117 @@ static void use(Shader* s) {
     active_shader = s;
     glUseProgram(s->gl_handle);
 }
-static uint32 makeshader(uint32 program, GLenum _type, char* code) {
+static string alloc_copy(string s) {
+    char* c = malloc((s.length + 1));
+    for (int32 it = 0; it < s.length; it++) c[it] = s.chars[it];
+    c[s.length] = (char)0;
+    return (string) {c, s.length};
+}
+static UBO* get_ubo(string name) {
+    // local procedure
+    uint32 len = list_length(uniform_buffer_objects);
+    for (int32 it = 0; it < len; it++) {
+        UBO* ubo = &uniform_buffer_objects[it];
+        if (string_equals(name, ubo->name)) return ubo;
+    }
+    UBO ubo;
+    ubo.binding_point = len;
+    ubo.name = alloc_copy(name);
+    glGenBuffers(1, &ubo.buffer_id);
+    glBindBufferBase(35345, ubo.binding_point, ubo.buffer_id);
+    list_add(&uniform_buffer_objects, &ubo);
+    return &uniform_buffer_objects[len];
+}
+static void bind_ubos(Shader* s) {
+    int32 num_ubos;
+    int32 max_name_len;
+    glGetProgramiv(s->gl_handle, 35382, &num_ubos);
+    glGetProgramiv(s->gl_handle, 35381, &max_name_len);
+    char* ubo_name = malloc((uint64)max_name_len);
+    for (int32 it = 0; it < num_ubos; it++) {
+        int32 name_len;
+        glGetActiveUniformBlockName(s->gl_handle, it, max_name_len, &name_len, ubo_name);
+        uint32 ubo_index = glGetUniformBlockIndex(s->gl_handle, ubo_name);
+        UBO* ubo = get_ubo(make_string(ubo_name));
+        glUniformBlockBinding(s->gl_handle, ubo_index, ubo->binding_point);
+    }
+    free(ubo_name);
+}
+static void process_glsl_source(StringBuilder* sb, char* filename) {
+    char* src = fileread1(filename);
+    sb_append2(sb, "#line 1 \"");
+    sb_append2(sb, filename);
+    sb_append2(sb, "\"\n");
+    char* buffer = src;
+    uint32 line_num = 1;
+    while (*buffer) {
+        string line = substr_until(buffer, '\n');
+        if (buffer[line.length] != 0) line.length += 1;
+        if (starts_with(line.chars, "#include \"")) {
+            char* fn = (buffer + 10);
+            uint32 len = substr_until(fn, '"').length;
+            fn[len] = (char)0;
+            process_glsl_source(sb, fn);
+            sb_append2(sb, "\n#line ");
+            sb_append1(sb, to_string1((line_num + 1)));
+            sb_append2(sb, " \"");
+            sb_append2(sb, filename);
+            sb_append2(sb, "\"");
+            sb_append2(sb, "\n");
+        } else {
+            sb_append1(sb, line);
+        }
+        line_num++;
+        buffer += line.length;
+    }
+    free(src);
+}
+static Shader load_shader1(char* filename) {
+    StringBuilder src = sb_create();
+    process_glsl_source(&src, filename);
+    StringBuilder frag = sb_create();
+    StringBuilder vert = sb_create();
+    sb_append2(&frag, "#version 330 core\n");
+    sb_append2(&frag, "#define IO in\n");
+    sb_append2(&frag, "#define FragmentShader\n");
+    sb_append2(&frag, src.content);
+    sb_append2(&vert, "#version 330 core\n");
+    sb_append2(&vert, "#define IO out\n");
+    sb_append2(&vert, "#define VertexShader\n");
+    sb_append2(&vert, src.content);
+    Shader s = create_shader(frag.content, vert.content);
+    sb_free(frag);
+    sb_free(vert);
+    sb_free(src);
+    return s;
+}
+static Shader load_shader2(char* frag_filename, char* vert_filename) {
+    char* frag_src = fileread1(frag_filename);
+    char* vert_src = fileread1(vert_filename);
+    Shader s = create_shader(frag_src, vert_src);
+    free(frag_src);
+    free(vert_src);
+    return s;
+}
+static uint32 make_shader(uint32 program, GLenum _type, char* code) {
     uint32 s = glCreateShader(_type);
     glShaderSource(s, 1, &code, 0);
     glAttachShader(program, s);
     return s;
 }
+static void cleanup_shader(uint32 program, uint32 shader) {
+    glDetachShader(program, shader);
+    glDeleteShader(shader);
+}
 static Shader create_shader(char* fragsrc, char* vertsrc) {
     // local procedure
+    // local procedure
     uint32 program = glCreateProgram();
-    uint32 f = makeshader(program, 35632, fragsrc);
-    uint32 v = makeshader(program, 35633, vertsrc);
+    uint32 f = make_shader(program, 35632, fragsrc);
+    uint32 v = make_shader(program, 35633, vertsrc);
     glLinkProgram(program);
-    glDetachShader(program, f);
-    glDeleteShader(f);
-    glDetachShader(program, v);
-    glDeleteShader(v);
+    cleanup_shader(program, f);
+    cleanup_shader(program, v);
     int32 status;
     glGetProgramiv(program, 35714, &status);
     if (status == 0) {
@@ -3245,6 +3481,7 @@ static Shader create_shader(char* fragsrc, char* vertsrc) {
     }
     Shader s;
     s.gl_handle = program;
+    bind_ubos(&s);
     return s;
 }
 static void dispatch_immediate() {
@@ -3516,6 +3753,18 @@ static vec4 reflect3(vec4 a, vec4 normal) {
 static vec4 lerp4(float32 t, vec4 a, vec4 b) {
     return add3(a, mul6(sub3(b, a), t));
 }
+static vec2 xy1(vec3 a) {
+    return (vec2) {a.x, a.y};
+}
+static vec2 xy2(vec4 a) {
+    return (vec2) {a.x, a.y};
+}
+static vec3 xyz(vec4 a) {
+    return (vec3) {a.x, a.y, a.z};
+}
+static mat2 mat2_identity() {
+    return (mat2) {1, 0, 0, 1};
+}
 static vec2 col11(mat2 m) {
     return (vec2) {m.row1.x, m.row2.x};
 }
@@ -3541,6 +3790,9 @@ static vec2 mul8(mat2 m, vec2 v) {
 }
 static vec2 mul9(vec2 v, mat2 m) {
     return (vec2) {dot1(v, col11(m)), dot1(v, col21(m))};
+}
+static mat3 mat3_identity() {
+    return (mat3) {1, 0, 0, 0, 1, 0, 0, 0, 1};
 }
 static vec3 col12(mat3 m) {
     return (vec3) {m.row1.x, m.row2.x, m.row3.x};
@@ -3572,6 +3824,9 @@ static vec3 mul11(mat3 m, vec3 v) {
 }
 static vec3 mul12(vec3 v, mat3 m) {
     return (vec3) {dot2(v, col12(m)), dot2(v, col22(m)), dot2(v, col31(m))};
+}
+static mat4 mat4_identity() {
+    return (mat4) {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
 }
 static vec4 col13(mat4 m) {
     return (vec4) {m.row1.x, m.row2.x, m.row3.x, m.row4.x};
@@ -3637,7 +3892,22 @@ static quat normalize4(quat q) {
     float32 l = sqrtf(((((q.x * q.x) + (q.y * q.y)) + (q.z * q.z)) + (q.w * q.w)));
     return (quat) {(q.x / l), (q.y / l), (q.z / l), (q.w / l)};
 }
-static quat mul16(quat l, quat r) {
+static quat sub4(quat a, quat b) {
+    return (quat) {(a.x - b.x), (a.y - b.y), (a.z - b.z), (a.w - b.w)};
+}
+static quat add4(quat a, quat b) {
+    return (quat) {(a.x + b.x), (a.y + b.y), (a.z + b.z), (a.w + b.w)};
+}
+static quat mul16(quat a, float32 s) {
+    return (quat) {(a.x * s), (a.y * s), (a.z * s), (a.w * s)};
+}
+static quat lerp5(float32 t, quat a, quat b) {
+    return add4(a, mul16(sub4(b, a), t));
+}
+static quat nlerp(float32 t, quat a, quat b) {
+    return normalize4(lerp5(t, a, b));
+}
+static quat mul17(quat l, quat r) {
     float32 a = l.w;
     float32 b = l.x;
     float32 c = l.y;
@@ -3647,6 +3917,16 @@ static quat mul16(quat l, quat r) {
     float32 g = r.y;
     float32 h = r.z;
     return (quat) {((((b * e) + (a * f)) + (c * h)) - (d * g)), ((((a * g) - (b * h)) + (c * e)) + (d * f)), ((((a * h) + (b * g)) - (c * f)) + (d * e)), ((((a * e) - (b * f)) - (c * g)) - (d * h))};
+}
+static quat axisangle2quat(vec3 axis, float32 angle) {
+    float32 ha = (angle / 2.000000);
+    float32 s = sinf(ha);
+    quat res;
+    res.x = (axis.x * s);
+    res.y = (axis.y * s);
+    res.z = (axis.z * s);
+    res.w = cosf(ha);
+    return res;
 }
 static mat4 quat2matrix(quat q) {
     float32 xx = (q.x * q.x);
@@ -3659,6 +3939,40 @@ static mat4 quat2matrix(quat q) {
     float32 zz = (q.z * q.z);
     float32 zw = (q.z * q.w);
     return (mat4) {(1.000000 - ((yy + zz) * 2.000000)), ((xy - zw) * 2.000000), ((xz + yw) * 2.000000), 0, ((xy + zw) * 2.000000), (1.000000 - ((xx + zz) * 2.000000)), ((yz - xw) * 2.000000), 0, ((xz - yw) * 2.000000), ((yz + xw) * 2.000000), (1.000000 - ((xx + yy) * 2.000000)), 0, 0, 0, 0, 1};
+}
+static mat4 to_matrix(Transform t) {
+    mat4 res = quat2matrix(t.rotation);
+    res.row4.x = t.position.x;
+    res.row4.y = t.position.y;
+    res.row4.z = t.position.z;
+    return res;
+}
+static Transform transform_default() {
+    return (Transform) {.position = {0, 0, 0}, .scale = {1, 1, 1}, .rotation = {0, 0, 0, 1}};
+}
+static void rotate1(Transform* tr, quat q) {
+    tr->rotation = mul17(tr->rotation, q);
+    tr->rotation = normalize4(tr->rotation);
+}
+static void rotate2(Transform* tr, vec3 axis, float32 angle) {
+    rotate1(tr, axisangle2quat(axis, angle));
+}
+static void translate(Transform* tr, vec3 t) {
+    tr->position.x += t.x;
+    tr->position.y += t.y;
+    tr->position.z += t.z;
+}
+static void look_at(Transform* tr, vec3 target, vec3 up) {
+    vec3 forward = normalize2(sub2(target, tr->position));
+    vec3 left = normalize2(cross(up, forward));
+    up = normalize2(cross(forward, left));
+}
+static Transform2D lerp6(float32 t, Transform2D a, Transform2D b) {
+    Transform2D res = (Transform2D) {0};
+    res.pos = lerp2(t, a.pos, b.pos);
+    res.rot = lerp1(t, a.rot, b.rot);
+    res.scale = lerp1(t, a.scale, b.scale);
+    return res;
 }
 static vec2 right(Transform2D t) {
     return make_vec1(cosf(t.rot), sinf(t.rot));
@@ -3690,6 +4004,24 @@ static vec2 world2local2(Transform2D t, float32 x, float32 y) {
     res.y = ((c * py) + (s * px));
     return res;
 }
+static Camera camera(float32 fov, float32 near, float32 far) {
+    Camera cam = (Camera) {0};
+    cam.transform = transform_default();
+    cam.fov = fov;
+    cam.near_plane = near;
+    cam.far_plane = far;
+    cam.view = mat4_identity();
+    cam.projection = mat4_identity();
+    return cam;
+}
+static void update_matrices(Camera* cam) {
+    cam->projection = perspective(cam->fov, (1.000000 / main_window_aspect), cam->near_plane, cam->far_plane);
+    cam->view = to_matrix(cam->transform);
+    vec3 xaxis = neg2(xyz(cam->view.row1));
+    vec3 yaxis = xyz(cam->view.row2);
+    vec3 zaxis = neg2(xyz(cam->view.row3));
+    cam->view = (mat4) {xaxis.x, yaxis.x, zaxis.x, 0, xaxis.y, yaxis.y, zaxis.y, 0, xaxis.z, yaxis.z, zaxis.z, 0, -dot2(xaxis, cam->transform.position), -dot2(yaxis, cam->transform.position), -dot2(zaxis, cam->transform.position), 1};
+}
 static Image load_bitmap(char* filename) {
     typedef struct Header Header;
     struct Header {
@@ -3713,8 +4045,8 @@ static Image load_bitmap(char* filename) {
         uint32 colors_used;
         uint32 important_colors;
     };
-    printf("%s%llu%s", "Header size: ", sizeof(Header), "\n");
-    printf("%s%llu%s", "InfoHeader size: ", sizeof(InfoHeader), "\n");
+    printf("%s%d%s", "Header size: ", (uint32)sizeof(Header), "\n");
+    printf("%s%d%s", "InfoHeader size: ", (uint32)sizeof(InfoHeader), "\n");
     Header* head = (Header*)fileread2(filename, "rb");
     InfoHeader* info = (InfoHeader*)((uint64)head + 14);
     uint32 data_offset = *((uint32*)((uint64)head + 10));
@@ -3779,6 +4111,25 @@ static int32 key2(int32 c) {
 static int32 mouse(int32 btn) {
     return glfwGetMouseButton(main_window, btn);
 }
+static void input_update() {
+    pmouse_x = mouse_x;
+    pmouse_y = mouse_y;
+    glfwGetCursorPos(main_window, &mouse_x, &mouse_y);
+    dmouse_x = (mouse_x - pmouse_x);
+    dmouse_y = (mouse_y - pmouse_y);
+    wasd.x = 0;
+    wasd.y = 0;
+    if (key1('W')) wasd.y += 1;
+    if (key1('S')) wasd.y -= 1;
+    if (key1('A')) wasd.x += 1;
+    if (key1('D')) wasd.x -= 1;
+}
+static void enable_cursor() {
+    glfwSetInputMode(main_window, 208897, 212993);
+}
+static void disable_cursor() {
+    glfwSetInputMode(main_window, 208897, 212995);
+}
 static void setup_vertex2D_attributes() {
     vertex2D* v = 0;
     glEnableVertexAttribArray(0);
@@ -3830,8 +4181,8 @@ static DrawBuffers create_draw_buffers2() {
 }
 static void update_buffers(DrawBuffers* db, vertex2D* vertices, uint32 vertices_count, uint32* indices, uint32 indices_count) {
     db->elements_count = (int32)indices_count;
-    update_buffer(db->vbo, (vertices_count * (uint32)(sizeof(vertex2D))), vertices);
-    update_buffer(db->ebo, (indices_count * (uint32)(sizeof(uint32))), indices);
+    update_buffer(db->vbo, (vertices_count * sizeof(vertex2D)), vertices);
+    update_buffer(db->ebo, (indices_count * sizeof(uint32)), indices);
 }
 static void update_buffer(uint32 buffer, uint32 size, void* data) {
     glBindBuffer(34962, buffer);
@@ -3848,7 +4199,47 @@ static void draw_elements2(DrawBuffers db, uint32 instanceCount) {
     glDrawElementsInstanced(4, db.elements_count, 5125, 0, instanceCount);
     glBindVertexArray(0);
 }
+static void gizmo_setup() {
+    gizmo_points_list = list_create(sizeof(GizmoPoint));
+    {
+        glGenVertexArrays(1, &gizmo_points_vao);
+        glBindVertexArray(gizmo_points_vao);
+        glGenBuffers(1, &gizmo_points_vbo);
+        glBindBuffer(34962, gizmo_points_vbo);
+        GizmoPoint* gp = 0;
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, 5126, 0, sizeof(GizmoPoint), &gp->pos);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 4, 5121, 1, sizeof(GizmoPoint), &gp->color);
+        glBindVertexArray(0);
+        glBindBuffer(34962, 0);
+    }
+    gizmo_points_shader = load_shader1("../grax/shaders/gizmo_points3D.glsl");
+    glEnable(34370);
+}
+static void gizmo_dispatch() {
+    uint32 len = list_length(gizmo_points_list);
+    update_buffer(gizmo_points_vbo, (len * sizeof(GizmoPoint)), gizmo_points_list);
+    use(&gizmo_points_shader);
+    glBindVertexArray(gizmo_points_vao);
+    glDrawArrays(0, 0, len);
+    glBindVertexArray(0);
+    list_clear(gizmo_points_list);
+}
+static void gizmo_point1(vec3 pos) {
+    gizmo_point2(pos, gizmo_current_color);
+}
+static void gizmo_point2(vec3 pos, Color color) {
+    GizmoPoint gp = (GizmoPoint) {.pos = pos, .color = color};
+    list_add(&gizmo_points_list, &gp);
+}
+static void gizmo_transform1(Transform* tr) {
+    gizmo_point2(tr->position, (Color){255, 255, 255, 255});
+}
+static void gizmo_transform2(Transform2D* tr) {
+}
 static void __static_init() {
+    uniform_buffer_objects = list_create(sizeof(UBO));
     num_str = malloc(20);
 }
 int main(int argc, char** argv) {

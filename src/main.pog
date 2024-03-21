@@ -45,16 +45,6 @@ void uniform_entity_pos(vec2 pos) { glUniform2f(glGetUniformLocation(shader.gl_h
 void uniform_entity_rot(float32 rot) { glUniform1f(glGetUniformLocation(shader.gl_handle, "entity_rot"), rot); }
 void uniform_entity_scale(float32 scale) { glUniform1f(glGetUniformLocation(shader.gl_handle, "entity_scale"), scale); }
 
-vec2 rotate_vec(vec2 dir, float32 angle) {
-    float32 c = cosf(angle);
-    float32 s = sinf(angle);
-
-    vec2 res;
-    res.x = c*dir.x + s*dir.y;
-    res.y = -s*dir.x + c*dir.y;
-    return res;
-}
-
 
 void on_mouse_scroll(GLFWwindow* w, float64 x, float64 y) {
     let s = y as float32;
