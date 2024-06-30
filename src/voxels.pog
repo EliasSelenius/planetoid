@@ -71,33 +71,33 @@ void updateGridMesh(VoxelGrid* grid) {
     list_clear(grid.inds_outline);
 
     uint32 size = grid.res - 1;
-    let g1_byteoffset = grid.res * grid.res;
-    let g2_byteoffset = g1_byteoffset + grid.res * size;
+    uint32 g1_byteoffset = grid.res * grid.res;
+    uint32 g2_byteoffset = g1_byteoffset + grid.res * size;
 
     for uint32 x : 0 .. size {
         for uint32 y : 0 .. size {
 
             /*
-                *--------1--------*
-                |                 |
-                |                 |
-                |                 |
-                2                 3
-                |                 |
-                |                 |
-                |                 |
-                *--------4--------*
+               i1--------e1--------i2
+                |                  |
+                |                  |
+                |                  |
+                e2                 e3
+                |                  |
+                |                  |
+                |                  |
+               i3--------e4--------i4
             */
 
-            let e2 = g1_byteoffset + x * size + y;
-            let e3 = g1_byteoffset + (x + 1) * size + y;
-            let e1 = g2_byteoffset + x * grid.res + (y + 1);
-            let e4 = g2_byteoffset + x * grid.res + y;
+            uint32 e2 = g1_byteoffset + x * size + y;
+            uint32 e3 = g1_byteoffset + (x + 1) * size + y;
+            uint32 e1 = g2_byteoffset + x * grid.res + (y + 1);
+            uint32 e4 = g2_byteoffset + x * grid.res + y;
 
-            let i1 = getIndex(grid.res, x, y + 1);
-            let i2 = getIndex(grid.res, x + 1, y + 1);
-            let i3 = getIndex(grid.res, x, y);
-            let i4 = getIndex(grid.res, x + 1, y);
+            uint32 i1 = getIndex(grid.res, x, y + 1);
+            uint32 i2 = getIndex(grid.res, x + 1, y + 1);
+            uint32 i3 = getIndex(grid.res, x, y);
+            uint32 i4 = getIndex(grid.res, x + 1, y);
 
             let p1 = grid.data[i1];
             let p2 = grid.data[i2];
@@ -130,9 +130,9 @@ void updateGridMesh(VoxelGrid* grid) {
                     add_tri(grid, i3, e1, i1);
                     break;
                 case 0x0F & ~BottomRightBit:
-                    add_tri(grid, i1, e3, e4);
+                    add_tri(grid, i1, e4, e3);
                     add_tri(grid, i1, e3, i2);
-                    add_tri(grid, i1, e4, i3);
+                    add_tri(grid, i1, i3, e4);
                     break;
                 case 0x0F & ~BottomLeftBit:
                     add_tri(grid, i2, e2, e4);
@@ -275,8 +275,8 @@ vec2 getLocalCoords(VoxelGrid* grid, Transform2D transform, float32 x, float32 y
 void add_circle(with VoxelGrid* grid, with Transform2D transform, float32 radius, float32 x, float32 y) {
 
     let p = getLocalCoords(grid, transform, x, y);
-    int32 rx = round2int(p.x);
-    int32 ry = round2int(p.y);
+    int32 rx = round(p.x) as int32;
+    int32 ry = round(p.y) as int32;
 
     int32 iradius = (radius + 1) as int32;
     int32 x_min = clamp(rx - iradius, 0, grid.res as int32);
@@ -301,8 +301,8 @@ void add_circle(with VoxelGrid* grid, with Transform2D transform, float32 radius
 void remove_circle(with VoxelGrid* grid, with Transform2D transform, float32 radius, float32 x, float32 y) {
 
     let p = getLocalCoords(grid, transform, x, y);
-    int32 rx = round2int(p.x);
-    int32 ry = round2int(p.y);
+    int32 rx = round(p.x) as int32;
+    int32 ry = round(p.y) as int32;
 
     int32 iradius = (radius + 1) as int32;
     int32 x_min = clamp(rx - iradius, 0, grid.res as int32);
@@ -383,14 +383,15 @@ int32 point_intersects(vec2 point, VoxelGrid* grid, Transform2D transform, Inter
     point = getLocalCoords(grid, transform, point.x, point.y);
     int32 x = point.x as int32;
     int32 y = point.y as int32;
+    int32 res = grid.res as int32;
 
-    if x < 0 or x >= grid.res return false;
-    if y < 0 or y >= grid.res return false;
+    if x < 0 or x >= res return false;
+    if y < 0 or y >= res return false;
 
-    let i1 = grid.res * x + y + 1;
-    let i2 = grid.res * (x + 1) + y + 1;
-    let i3 = grid.res * x + y;
-    let i4 = grid.res * (x + 1) + y;
+    let i1 = res * x + y + 1;
+    let i2 = res * (x + 1) + y + 1;
+    let i3 = res * x + y;
+    let i4 = res * (x + 1) + y;
 
     let p1 = grid.data[i1];
     let p2 = grid.data[i2];

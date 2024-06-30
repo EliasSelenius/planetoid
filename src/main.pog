@@ -1,7 +1,7 @@
 
 /*
 
-    ../plang/bin/plang.exe build cflags -lglfw3dll
+    ..\plang\bin\plang.exe src\main.pog cflags -lglfw3dll
 
     TODO:
         - 2d noise function
@@ -18,6 +18,8 @@
 
 
 include "../grax/grax.pog";
+include "src/voxels.pog";
+include "src/world.pog";
 
 Shader shader;
 Transform2D camera;
@@ -46,50 +48,22 @@ void uniform_entity_rot(float32 rot) { glUniform1f(glGetUniformLocation(shader.g
 void uniform_entity_scale(float32 scale) { glUniform1f(glGetUniformLocation(shader.gl_handle, "entity_scale"), scale); }
 
 
-void on_mouse_scroll(GLFWwindow* w, float64 x, float64 y) {
-    let s = y as float32;
-    if key(GLFW_KEY_LEFT_CONTROL) {
-        voxel_edit_radius += s * 0.1;
-        voxel_edit_radius = clamp(voxel_edit_radius, 0.1, 100);
-    } else {
-        camera.scale -= camera.scale * s * 0.1;
-        camera.scale = clamp(camera.scale, 1.0, 10000.0);
-    }
-}
-
-void on_key_input(GLFWwindow* window, int32 key, int32 scancode, int32 action, int32 mods) {
-    if action == GLFW_PRESS {
-        switch key {
-            case GLFW_KEY_F11: toggle_fullscreen(main_window); break;
-        }
-    }
-}
-
-Texture2D load_texture(char* file_name) {
-    let image = load_bitmap(file_name);
-    let tex = create_texture2D(image);
-    set_filter(tex, GL_NEAREST);
-    free(image.pixels);
-    return tex;
+void on_event(AppEvent event, AppEventData data) switch event {
 }
 
 void load() {
-
-    glfwSetScrollCallback(main_window, on_mouse_scroll);
-    glfwSetKeyCallback(main_window, on_key_input);
-
 
     { // load shader
         let f = fileread("shaders/frag.glsl");
         let v = fileread("shaders/vert.glsl");
 
-        shader = create_shader(f, v);
+        shader = create_shader(make_string("old shitty shader"), f, v);
 
         free(f);
         free(v);
     }
 
-    player_texture = load_texture("textures/player.bmp");
+    player_texture = load_texture2D("textures/player.bmp");
 
     { // genereate image
         const size = 64;
@@ -117,7 +91,7 @@ void load() {
         }
 
         random_texture = create_texture2D(image);
-        set_filter(random_texture, GL_NEAREST);
+        set_filter(random_texture, TextureFilter.nearest);
         free(image.pixels);
     }
 
@@ -128,20 +102,26 @@ void load() {
 
 int32 main() {
 
+    app.on_event = on_event;
     grax_init();
 
 
     load();
 
-    {
-        char* version = glGetString(GL_VERSION) as char*;
-        print("OpenGL version: ", version, "\n");
-    }
-
     glClearColor(0.05, 0.05, 0.05, 1.0);
     glLineWidth(10);
 
     while grax_loop() {
+
+        let s = mouse_scroll as float32;
+        if key(GLFW_KEY_LEFT_CONTROL) {
+            voxel_edit_radius += s * 0.1;
+            voxel_edit_radius = clamp(voxel_edit_radius, 0.1, 100);
+        } else {
+            camera.scale -= camera.scale * s * 0.1;
+            camera.scale = clamp(camera.scale, 1.0, 10000.0);
+        }
+
 
         use(*shader);
         // bind(player_texture);

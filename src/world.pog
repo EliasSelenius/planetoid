@@ -123,26 +123,26 @@ void draw_planet(Planet* planet) {
     // glBindVertexArray(0);
 
 
-    // { // voxels
-    //     let mouseCoord = getMouseWorldCoord();
+    { // voxels
+        let mouseCoord = getMouseWorldCoord();
 
-    //     uniform_entity_pos(mouseCoord);
-    //     uniform_entity_scale(voxel_edit_radius);
-    //     draw_elements(voxelMesh_circle);
+        uniform_entity_pos(mouseCoord);
+        uniform_entity_scale(voxel_edit_radius);
+        draw_elements(voxelMesh_circle);
 
-    //     Intersection intersection;
-    //     if point_intersects(mouseCoord, *voxelGrid, *intersection) {
-    //         print("Intersects ", intersection.distance, "\n");
-    //     }
+        Intersection intersection;
+        if point_intersects(mouseCoord, *planet.grid, planet.transform, *intersection) {
+            print("Intersects ", intersection.distance, "\n");
+        }
 
-    //     if mouse(Left_Mouse) {
-    //         VoxelGrid_addCircle(*voxelGrid, voxel_edit_radius, mouseCoord.x, mouseCoord.y);
-    //         updateGridMesh(*voxelGrid);
-    //     } else if mouse(Right_Mouse) {
-    //         VoxelGrid_removeCircle(*voxelGrid, voxel_edit_radius, mouseCoord.x, mouseCoord.y);
-    //         updateGridMesh(*voxelGrid);
-    //     }
-    // }
+        if mouse(Left_Mouse) {
+            add_circle(*planet.grid, planet.transform, voxel_edit_radius, mouseCoord.x, mouseCoord.y);
+            updateGridMesh(*planet.grid);
+        } else if mouse(Right_Mouse) {
+            remove_circle(*planet.grid, planet.transform, voxel_edit_radius, mouseCoord.x, mouseCoord.y);
+            updateGridMesh(*planet.grid);
+        }
+    }
 
 }
 
@@ -244,7 +244,7 @@ void world_update() {
 
     float32 time = glfwGetTime() as float32; // TODO: implement time, deltatime and timescale in grax
     // time += 10000.0;
-    // time = 0;
+    time = 0;
     for i : 0 .. planetsCount {
         Planet* planet = *planets[i];
         float32 t = Pi * 2.0;
@@ -274,11 +274,11 @@ void world_update() {
 vec2 getMouseWorldCoord() {
     float64 cx;
     float64 cy;
-    glfwGetCursorPos(main_window, *cx, *cy);
+    glfwGetCursorPos(app.main_window, *cx, *cy);
 
     int32 w;
     int32 h;
-    glfwGetFramebufferSize(main_window, *w, *h);
+    glfwGetFramebufferSize(app.main_window, *w, *h);
 
     float32 x = cx as float32 / w * 2 - 1;
     float32 y = -(cy as float32 / h * 2 - 1);
