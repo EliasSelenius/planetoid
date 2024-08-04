@@ -446,3 +446,5 @@ $RECYCLE.BIN/
 glfw3.dll
 glfw3dll.lib
 output.g.c
+output.exp
+output.lib

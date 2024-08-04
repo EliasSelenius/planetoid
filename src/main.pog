@@ -2,6 +2,7 @@
 /*
 
     ..\plang\bin\plang.exe src\main.pog cflags -lglfw3dll
+    ..\plang\bin\plang.exe src\main.pog cflags -lglfw3dll -O0 -g -fsanitize=address -fno-omit-frame-pointer
 
     TODO:
         - 2d noise function
@@ -21,7 +22,6 @@ include "../grax/grax.pog";
 include "src/voxels.pog";
 include "src/world.pog";
 
-Shader shader;
 Transform2D camera;
 
 float32 voxel_edit_radius = 1;
@@ -31,37 +31,27 @@ Texture2D player_texture;
 Texture2D random_texture;
 
 void apply_camera() {
-    glUniform1f(glGetUniformLocation(shader.gl_handle, "zoom"), camera.scale);
-    glUniform2f(glGetUniformLocation(shader.gl_handle, "cam_pos"), camera.pos.x, camera.pos.y);
-    glUniform1f(glGetUniformLocation(shader.gl_handle, "cam_rot"), camera.rot);
+    set_uniform("zoom", camera.scale);
+    set_uniform("cam_pos", camera.pos);
+    set_uniform("cam_rot", camera.rot);
 }
 
 
 void apply_transform(Transform2D t) {
-    glUniform2f(glGetUniformLocation(shader.gl_handle, "entity_pos"), t.pos.x, t.pos.y);
-    glUniform1f(glGetUniformLocation(shader.gl_handle, "entity_rot"), t.rot);
-    glUniform1f(glGetUniformLocation(shader.gl_handle, "entity_scale"), t.scale);
+    set_uniform("entity_pos", t.pos.x, t.pos.y, 0);
+    set_uniform("entity_rot", t.rot);
+    set_uniform("entity_scale", t.scale, t.scale);
 }
 
-void uniform_entity_pos(vec2 pos) { glUniform2f(glGetUniformLocation(shader.gl_handle, "entity_pos"), pos.x, pos.y); }
-void uniform_entity_rot(float32 rot) { glUniform1f(glGetUniformLocation(shader.gl_handle, "entity_rot"), rot); }
-void uniform_entity_scale(float32 scale) { glUniform1f(glGetUniformLocation(shader.gl_handle, "entity_scale"), scale); }
+void uniform_entity_pos(vec2 pos) set_uniform("entity_pos", pos.x, pos.y, 0);
+void uniform_entity_rot(float32 rot) set_uniform("entity_rot", rot);
+void uniform_entity_scale(float32 scale) set_uniform("entity_scale", scale, scale);
 
 
 void on_event(AppEvent event, AppEventData data) switch event {
 }
 
 void load() {
-
-    { // load shader
-        let f = fileread("shaders/frag.glsl");
-        let v = fileread("shaders/vert.glsl");
-
-        shader = create_shader(make_string("old shitty shader"), f, v);
-
-        free(f);
-        free(v);
-    }
 
     player_texture = load_texture2D("textures/player.bmp");
 
@@ -100,7 +90,7 @@ void load() {
     voxelMesh_circle = genCircle(360, 1);
 }
 
-int32 main() {
+void main() {
 
     app.on_event = on_event;
     grax_init();
@@ -123,9 +113,11 @@ int32 main() {
         }
 
 
-        use(*shader);
+        // use(*shader);
+        use(*default2d_shader);
         // bind(player_texture);
         bind(random_texture);
+        // bind(white_texture)
 
         world_update();
     }

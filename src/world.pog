@@ -132,7 +132,7 @@ void draw_planet(Planet* planet) {
 
         Intersection intersection;
         if point_intersects(mouseCoord, *planet.grid, planet.transform, *intersection) {
-            print("Intersects ", intersection.distance, "\n");
+            // print("Intersects ", intersection.distance, "\n");
         }
 
         if mouse(Left_Mouse) {
@@ -147,7 +147,7 @@ void draw_planet(Planet* planet) {
 }
 
 Planet generate_planet(float32 radius, float32 dist) {
-    Planet p;
+    Planet p = {};
     p.transform.scale = 1;
     p.radius = radius;
     p.dist = dist;
@@ -192,21 +192,6 @@ VoxelGrid generate_planet_grid(Planet* planet) {
 }
 
 void update_player() {
-    vec2 wasd;
-    wasd.x = 0;
-    wasd.y = 0;
-    if key('W') wasd.y += 1;
-    if key('S') wasd.y -= 1;
-    if key('A') wasd.x -= 1;
-    if key('D') wasd.x += 1;
-    // if (wasd.x != 0.0f or wasd.y != 0.0f) {
-    //     vec2Normalize(&wasd);
-    // }
-    float32 qe = 0;
-    if key('Q') qe -= 1;
-    if key('E') qe += 1;
-
-
     if key('F') { player.vel.x = 0.0; player.vel.y = 0.0; }
 
     float32 c = cosf(player.transform.rot);
@@ -216,8 +201,9 @@ void update_player() {
     player.vel = add(player.vel, mul(dir, 0.01));
 
 
-    player.transform.rot += qe * 0.05;
+    player.transform.rot += input_axis('Q', 'E') * 0.05;
 
+    // TODO: exponential decay?
     camera.pos = player.transform.pos;
     camera.rot = player.transform.rot;
     apply_camera();

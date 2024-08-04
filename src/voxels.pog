@@ -18,7 +18,6 @@ const TopRightBit = 4;
 const BottomLeftBit = 2;
 const BottomRightBit = 1;
 
-const PointOnThreshold = 0.001;
 
 void add_tri(with VoxelGrid* grid, uint32 i1, uint32 i2, uint32 i3) {
     list_add(*grid.inds, *i1);
@@ -46,13 +45,17 @@ VoxelGrid createVoxelGrid(uint32 res) {
     grid.verts = malloc(grid.numVerts * sizeof vertex2D);
 
     float32 half = grid.res as float32 / 2.0;
-
     for uint32 x : 0 .. grid.res {
         for uint32 y : 0 .. grid.res {
             let i = getIndex(grid.res, x, y);
             grid.verts[i].pos.x = x as float32 - half;
             grid.verts[i].pos.y = y as float32 - half;
         }
+    }
+
+    for uint32 i : 0 .. grid.numVerts {
+        grid.verts[i].color = White;
+        grid.verts[i].uv = grid.verts[i].pos;
     }
 
     grid.inds = list_create(sizeof uint32 as uint32);
@@ -63,6 +66,40 @@ VoxelGrid createVoxelGrid(uint32 res) {
     glGenBuffers(1, *grid.inds_outline_ebo);
 
     return grid;
+}
+
+// enum ShapeMask {
+//     CornerTopLeft        = TopLeftBit,
+//     CornerTopRight       = TopRightBit,
+//     CornerBottomRight    = BottomRightBit,
+//     CornerBottomLeft     = BottomLeftBit,
+//     InvCornerTopLeft     = 0x0F & ~TopLeftBit,
+//     InvCornerTopRight    = 0x0F & ~TopRightBit,
+//     InvCornerBottomRight = 0x0F & ~BottomRightBit,
+//     InvCornerBottomLeft  = 0x0F & ~BottomLeftBit,
+//     EdgeTop              = TopLeftBit | TopRightBit,
+//     EdgeBottom           = BottomLeftBit | BottomRightBit,
+//     EdgeLeft             = TopLeftBit | BottomLeftBit,
+//     EdgeRight            = TopRightBit | BottomRightBit,
+//     DiagonalDown         = TopLeftBit | BottomRightBit,
+//     DiagonalUp           = TopRightBit | BottomLeftBit,
+//     Solid                = 0x0F,
+//     Air                  = 0x00
+// }
+
+uint8 get_mask(float32 p1, p2, p3, p4) {
+    uint8 mask = 0;
+    if p1 != 0.0  mask |= TopLeftBit;
+    if p2 != 0.0  mask |= TopRightBit;
+    if p3 != 0.0  mask |= BottomLeftBit;
+    if p4 != 0.0  mask |= BottomRightBit;
+
+    // if p1 > PointOnThreshold  mask |= TopLeftBit;
+    // if p2 > PointOnThreshold  mask |= TopRightBit;
+    // if p3 > PointOnThreshold  mask |= BottomLeftBit;
+    // if p4 > PointOnThreshold  mask |= BottomRightBit;
+
+    return mask;
 }
 
 void updateGridMesh(VoxelGrid* grid) {
@@ -104,11 +141,7 @@ void updateGridMesh(VoxelGrid* grid) {
             let p3 = grid.data[i3];
             let p4 = grid.data[i4];
 
-            uint8 mask = 0;
-            if p1 > PointOnThreshold mask |= TopLeftBit;
-            if p2 > PointOnThreshold mask |= TopRightBit;
-            if p3 > PointOnThreshold mask |= BottomLeftBit;
-            if p4 > PointOnThreshold mask |= BottomRightBit;
+            uint8 mask = get_mask(p1, p2, p3, p4);
 
             switch (mask) {
 
@@ -225,8 +258,8 @@ void updateGridMesh(VoxelGrid* grid) {
                 let p1 = grid.data[getIndex(grid.res, x, y)];
                 let p2 = grid.data[getIndex(grid.res, x, y + 1)];
 
-                let b1 = p1 > PointOnThreshold;
-                let b2 = p2 > PointOnThreshold;
+                bool b1 = p1 != 0.0;
+                bool b2 = p2 != 0.0;
 
                 float32 ofs;
                 if b1 == b2 ofs = 0.5;
@@ -245,8 +278,8 @@ void updateGridMesh(VoxelGrid* grid) {
                 let p1 = grid.data[getIndex(grid.res, x, y)];
                 let p2 = grid.data[getIndex(grid.res, x + 1, y)];
 
-                let b1 = p1 > PointOnThreshold;
-                let b2 = p2 > PointOnThreshold;
+                bool b1 = p1 != 0.0;
+                bool b2 = p2 != 0.0;
 
                 float32 ofs;
                 if b1 == b2 ofs = 0.5;
@@ -331,7 +364,7 @@ vec2 calcCenterOfMass(VoxelGrid* grid) {
         uint32 y = -1; while ++y < grid.res {
             let i = x * grid.res + y;
             float32 value = grid.data[i];
-            if value > PointOnThreshold {
+            if value != 0.0 {
                 total += value;
                 res = add(res, mul(make_vec(x, y), value));
             }
@@ -398,11 +431,7 @@ int32 point_intersects(vec2 point, VoxelGrid* grid, Transform2D transform, Inter
     let p3 = grid.data[i3];
     let p4 = grid.data[i4];
 
-    uint8 mask = 0;
-    if p1 > PointOnThreshold mask |= TopLeftBit;
-    if p2 > PointOnThreshold mask |= TopRightBit;
-    if p3 > PointOnThreshold mask |= BottomLeftBit;
-    if p4 > PointOnThreshold mask |= BottomRightBit;
+    uint8 mask = get_mask(p1, p2, p3, p4);
 
     // let size = grid.res - 1;
     // let g1_byteoffset = grid.res * grid.res;
