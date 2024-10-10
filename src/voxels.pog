@@ -35,7 +35,7 @@ uint32 getIndex(uint32 res, uint32 x, uint32 y) {
 }
 
 VoxelGrid createVoxelGrid(uint32 res) {
-    VoxelGrid grid;
+    VoxelGrid grid = {};
 
     grid.res = res;
     grid.data = malloc(res * res * sizeof float32);
@@ -337,11 +337,12 @@ void remove_circle(with VoxelGrid* grid, with Transform2D transform, float32 rad
     int32 rx = round(p.x) as int32;
     int32 ry = round(p.y) as int32;
 
+    int32 size = grid.res as int32 - 1;
     int32 iradius = (radius + 1) as int32;
-    int32 x_min = clamp(rx - iradius, 0, grid.res as int32);
-    int32 x_max = clamp(rx + iradius, 0, grid.res as int32);
-    int32 y_min = clamp(ry - iradius, 0, grid.res as int32);
-    int32 y_max = clamp(ry + iradius, 0, grid.res as int32);
+    int32 x_min = clamp(rx - iradius, 0, size);
+    int32 x_max = clamp(rx + iradius, 0, size);
+    int32 y_min = clamp(ry - iradius, 0, size);
+    int32 y_max = clamp(ry + iradius, 0, size);
 
     for ix : x_min .. x_max + 1 {
         for iy : y_min .. y_max + 1 {
@@ -411,20 +412,25 @@ int32 ray_lineseg_intersects(Ray ray, Lineseg seg, Intersection* out_intersectio
 
 int32 point_intersects(vec2 point, VoxelGrid* grid, Transform2D transform, Intersection* out_intersection) {
 
-    @out_intersection = {0} as Intersection;
+    @out_intersection = {};
 
     point = getLocalCoords(grid, transform, point.x, point.y);
     int32 x = point.x as int32;
     int32 y = point.y as int32;
     int32 res = grid.res as int32;
 
-    if x < 0 or x >= res return false;
-    if y < 0 or y >= res return false;
+    if x < 0 or x >= res-1 return false;
+    if y < 0 or y >= res-1 return false;
 
     let i1 = res * x + y + 1;
     let i2 = res * (x + 1) + y + 1;
     let i3 = res * x + y;
     let i4 = res * (x + 1) + y;
+
+    // let i1 = getIndex(grid.res, x, y + 1);
+    // let i2 = getIndex(grid.res, x + 1, y + 1);
+    // let i3 = getIndex(grid.res, x, y);
+    // let i4 = getIndex(grid.res, x + 1, y);
 
     let p1 = grid.data[i1];
     let p2 = grid.data[i2];

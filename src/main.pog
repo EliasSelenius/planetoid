@@ -113,11 +113,10 @@ void main() {
         }
 
 
-        // use(*shader);
         use(*default2d_shader);
         // bind(player_texture);
-        bind(random_texture);
-        // bind(white_texture)
+        // bind(random_texture);
+        bind(white_texture);
 
         world_update();
     }

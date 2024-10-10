@@ -196,7 +196,7 @@ void update_player() {
 
     float32 c = cosf(player.transform.rot);
     float32 s = sinf(player.transform.rot);
-    vec2 dir = make_vec(dot(make_vec(c, s), wasd), dot(make_vec(-s, c), wasd));
+    vec2 dir = make_vec(dot(make_vec(c, s), Input.wasd), dot(make_vec(-s, c), Input.wasd));
 
     player.vel = add(player.vel, mul(dir, 0.01));
 
