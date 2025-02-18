@@ -30,22 +30,22 @@ DrawBuffers voxelMesh_circle;
 Texture2D player_texture;
 Texture2D random_texture;
 
-void apply_camera() {
-    set_uniform("zoom", camera.scale);
-    set_uniform("cam_pos", camera.pos);
-    set_uniform("cam_rot", camera.rot);
-}
+// void apply_camera() {
+//     set_uniform("zoom", camera.scale);
+//     set_uniform("cam_pos", camera.pos);
+//     set_uniform("cam_rot", camera.rot);
+// }
 
 
-void apply_transform(Transform2D t) {
-    set_uniform("entity_pos", t.pos.x, t.pos.y, 0);
-    set_uniform("entity_rot", t.rot);
-    set_uniform("entity_scale", t.scale, t.scale);
-}
+// void apply_transform(Transform2D t) {
+//     set_uniform("entity_pos", t.pos.x, t.pos.y, 0);
+//     set_uniform("entity_rot", t.rot);
+//     set_uniform("entity_scale", t.scale, t.scale);
+// }
 
-void uniform_entity_pos(vec2 pos) set_uniform("entity_pos", pos.x, pos.y, 0);
-void uniform_entity_rot(float32 rot) set_uniform("entity_rot", rot);
-void uniform_entity_scale(float32 scale) set_uniform("entity_scale", scale, scale);
+// void uniform_entity_pos(vec2 pos) set_uniform("entity_pos", pos.x, pos.y, 0);
+// void uniform_entity_rot(float32 rot) set_uniform("entity_rot", rot);
+// void uniform_entity_scale(float32 scale) set_uniform("entity_scale", scale, scale);
 
 
 void on_event(AppEvent event, AppEventData data) switch event {
@@ -94,7 +94,7 @@ void main() {
 
     app.on_event = on_event;
     grax_init();
-
+    init_draw2d();
 
     load();
 
@@ -113,11 +113,48 @@ void main() {
         }
 
 
+
         use(*default2d_shader);
-        // bind(player_texture);
-        // bind(random_texture);
         bind(white_texture);
 
         world_update();
+
+        Transform2D tr = {};
+        tr.scale = 100;
+        draw_texture(
+            draw2d_renderer.quad_db,
+            tr,
+            0,
+            white_texture,
+            false,
+            vec2_zero, vec2_one,
+            vec4_one, vec4_zero);
+
+        dispatch_sprites(camera);
+
+        {
+            let planet = *planets[0];
+
+            InstanceData data = {
+                pos = make_vec(planet.tr.pos, 0),
+                0,
+                vec2_one,
+                vec2_zero, vec2_one,
+                vec4_one, vec4_zero
+            };
+
+            set_instance_data(data);
+
+            glBindVertexArray(planet.grid.db.vao);
+            glDrawArrays(GL_POINTS, 0, planet.grid.numVerts as int32);
+            // glBindVertexArray(0);
+
+            // draw outline
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planet.grid.inds_outline_ebo);
+            glDrawElements(GL_LINES, list_length(planet.grid.inds_outline), GL_UNSIGNED_INT, null);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planet.grid.db.ebo);
+            glBindVertexArray(0);
+        }
+
     }
 }

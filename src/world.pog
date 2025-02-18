@@ -1,13 +1,13 @@
 
 struct Entity {
-    Transform2D transform;
+    Transform2D tr;
     DrawBuffers db;
     vec2 vel;
 }
 
 struct Planet {
     VoxelGrid grid;
-    Transform2D transform;
+    Transform2D tr;
 
     float32 radius;
     float32 dist;
@@ -22,7 +22,7 @@ Entity* entities;
 Entity* player;
 
 
-const planetsCount = 9;
+const planetsCount = 1;
 Planet* planets;
 
 
@@ -33,21 +33,21 @@ Entity* appendEntity(DrawBuffers db) {
     }
 
     let res = *entities[entitiesLength++];
-    res.transform.pos = make_vec(0, 0);
-    res.transform.scale = 1;
-    res.transform.rot = 0;
+    res.tr.pos = make_vec(0, 0);
+    res.tr.scale = 1;
+    res.tr.rot = 0;
     res.db = db;
     res.vel = make_vec(0, 0);
     return res;
 }
 
 void updateEntity(Entity* entity) {
-    entity.transform.pos = add(entity.transform.pos, entity.vel);
+    entity.tr.pos = add(entity.tr.pos, entity.vel);
 
     for i : 0 .. planetsCount {
         Planet* planet = *planets[i];
 
-        vec2 diff = sub(planet.transform.pos, entity.transform.pos);
+        vec2 diff = sub(planet.tr.pos, entity.tr.pos);
         vec2 normal = normalize(diff);
 
         float32 planetArea = Pi * planet.radius * planet.radius;
@@ -61,12 +61,12 @@ void updateEntity(Entity* entity) {
 }
 
 void check_collision(Planet* planet, Entity* entity) {
-    Intersection intersection;
-    if point_intersects(entity.transform.pos, *planet.grid, planet.transform, *intersection) {
+    Intersection2D intersection;
+    if point_intersects(entity.tr.pos, *planet.grid, planet.tr, *intersection) {
 
         vec2 normal = intersection.surface_normal;
         vec2 correction = mul(normal, -intersection.distance);
-        entity.transform.pos = add(entity.transform.pos, correction);
+        entity.tr.pos = add(entity.tr.pos, correction);
 
         // entity.vel = reflect(entity.vel, normal); // bounce
         entity.vel = add(entity.vel, mul(normal, -dot(entity.vel, normal))); // cancel velocity in direction of surface
@@ -76,8 +76,11 @@ void check_collision(Planet* planet, Entity* entity) {
 DrawBuffers genCircle(int32 res, float32 radius) {
     uint32 vertsCount = res as uint32 + 1;
     vertex2D* verts = malloc(vertsCount * sizeof vertex2D);
-    verts[0].pos.x = 0;
-    verts[0].pos.y = 0;
+    verts[0] = {
+        pos = {},
+        uv = {},
+        color = White
+    };
 
     for i : 1 .. res + 1 {
         float32 angle = i * Tau / res;
@@ -100,55 +103,82 @@ DrawBuffers genCircle(int32 res, float32 radius) {
 
     inds[i - 1] = 1;
 
-    let db = create_draw_buffers();
+    let db = create_draw_buffers(sizeof vertex2D, vertex2D_attribs);
     update_buffers(*db, verts, vertsCount, inds, indsCount);
     free(verts);
     free(inds);
+
+    bind_instance_buffer_to_vao(db.vao, draw2d_renderer.vbo_instances);
+
     return db;
 }
 
 void draw_planet(Planet* planet) {
-    apply_transform(planet.transform);
-    draw_elements(planet.grid.db);
+
+    { // voxels
+        let mouseCoord = getMouseWorldCoord();
+
+        // uniform_entity_pos(mouseCoord);
+        // uniform_entity_scale(voxel_edit_radius);
+        // draw_elements(voxelMesh_circle);
+
+        Transform2D tr = { pos = mouseCoord, scale = voxel_edit_radius };
+        draw_texture(
+            voxelMesh_circle,
+            tr,
+            0,
+            white_texture,
+            false,
+            vec2_zero, vec2_one,
+            make_vec(1,1,1, 0.3), vec4_zero);
+
+
+        Intersection2D intersection;
+        if point_intersects(mouseCoord, *planet.grid, planet.tr, *intersection) {
+            // print("Intersects ", intersection.distance, "\n");
+        }
+
+        if mouse(Left_Mouse) {
+            add_circle(*planet.grid, planet.tr, voxel_edit_radius, mouseCoord.x, mouseCoord.y);
+        } else if mouse(Right_Mouse) {
+            remove_circle(*planet.grid, planet.tr, voxel_edit_radius, mouseCoord.x, mouseCoord.y);
+        }
+    }
+
+
+
+    if planet.grid.must_remesh {
+        remesh(*planet.grid);
+        print(list_length(planet.grid.inds) as uint32, "\n");
+    }
+
+    draw_texture(
+        planet.grid.db,
+        planet.tr,
+        0,
+        white_texture,
+        false,
+        vec2_zero, vec2_one,
+        vec4_one, vec4_zero);
+
+    // apply_transform(planet.tr);
+    // draw_elements(planet.grid.db);
 
 
     // Draw vertices as points
-    glBindVertexArray(planet.grid.db.vao);
-    glDrawArrays(GL_POINTS, 0, planet.grid.numVerts as int32);
+    // glBindVertexArray(planet.grid.db.vao);
+    // glDrawArrays(GL_POINTS, 0, planet.grid.numVerts as int32);
 
     // draw outline
     // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, voxelGrid.inds_outline_ebo);
     // glDrawElements(GL_LINES, list_length(voxelGrid.inds_outline), GL_UNSIGNED_INT, null);
     // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, voxelGrid.db.ebo);
     // glBindVertexArray(0);
-
-
-    { // voxels
-        let mouseCoord = getMouseWorldCoord();
-
-        uniform_entity_pos(mouseCoord);
-        uniform_entity_scale(voxel_edit_radius);
-        draw_elements(voxelMesh_circle);
-
-        Intersection intersection;
-        if point_intersects(mouseCoord, *planet.grid, planet.transform, *intersection) {
-            // print("Intersects ", intersection.distance, "\n");
-        }
-
-        if mouse(Left_Mouse) {
-            add_circle(*planet.grid, planet.transform, voxel_edit_radius, mouseCoord.x, mouseCoord.y);
-            updateGridMesh(*planet.grid);
-        } else if mouse(Right_Mouse) {
-            remove_circle(*planet.grid, planet.transform, voxel_edit_radius, mouseCoord.x, mouseCoord.y);
-            updateGridMesh(*planet.grid);
-        }
-    }
-
 }
 
 Planet generate_planet(float32 radius, float32 dist) {
     Planet p = {};
-    p.transform.scale = 1;
+    p.tr.scale = 1;
     p.radius = radius;
     p.dist = dist;
     p.yearDuration = powf(dist, 3.0/2.0) * 0.0001;
@@ -173,11 +203,15 @@ VoxelGrid generate_planet_grid(Planet* planet) {
             float32 len = sqrtf(xf*xf + yf*yf);
             const scale = 4.0;
             float32 offset = planet.dist;
-            let h = (gnoise(offset + xf / len * scale, offset + yf / len * scale) + 1.0) / 2.0;
+
+            float32 f = 1.0 / len * scale;
+            if len == 0.0  f = 0;
+
+            let h = (gnoise(offset + xf * f, offset + yf * f) + 1.0) / 2.0;
             h *= planet.radius / 3.0;
             h = planet.radius - h;
 
-            uint32 i = x * grid.res + y;
+            uint32 i = get_index(grid.res, x, y);
             grid.data[i] = clamp(h - len, 0, 1);
 
             // grid.data[i] = clamp(40 - len, 0, 1);
@@ -187,26 +221,25 @@ VoxelGrid generate_planet_grid(Planet* planet) {
         }
     }
 
-    updateGridMesh(*grid);
+    remesh(*grid);
     return grid;
 }
 
 void update_player() {
     if key('F') { player.vel.x = 0.0; player.vel.y = 0.0; }
 
-    float32 c = cosf(player.transform.rot);
-    float32 s = sinf(player.transform.rot);
+    float32 c = cosf(player.tr.rot);
+    float32 s = sinf(player.tr.rot);
     vec2 dir = make_vec(dot(make_vec(c, s), Input.wasd), dot(make_vec(-s, c), Input.wasd));
 
     player.vel = add(player.vel, mul(dir, 0.01));
 
 
-    player.transform.rot += input_axis('Q', 'E') * 0.05;
+    player.tr.rot += input_axis('Q', 'E') * 0.05;
 
     // TODO: exponential decay?
-    camera.pos = player.transform.pos;
-    camera.rot = player.transform.rot;
-    apply_camera();
+    camera.pos = player.tr.pos;
+    camera.rot = player.tr.rot;
 }
 
 void world_init() {
@@ -223,7 +256,7 @@ void world_init() {
     }
 
     player = appendEntity(genCircle(4, 0.1f));
-    player.transform.pos = {1000, 0};
+    player.tr.pos = {1000, 0};
 }
 
 void world_update() {
@@ -234,8 +267,8 @@ void world_update() {
     for i : 0 .. planetsCount {
         Planet* planet = *planets[i];
         float32 t = Pi * 2.0;
-        planet.transform.pos.x = cosf(planet.orbitOffset + t * time / planet.yearDuration) * planet.dist;
-        planet.transform.pos.y = sinf(planet.orbitOffset + t * time / planet.yearDuration) * planet.dist;
+        planet.tr.pos.x = cosf(planet.orbitOffset + t * time / planet.yearDuration) * planet.dist;
+        planet.tr.pos.y = sinf(planet.orbitOffset + t * time / planet.yearDuration) * planet.dist;
         draw_planet(planet);
     }
 
@@ -251,8 +284,15 @@ void world_update() {
 
     for i : 0 .. entitiesLength {
         let e = *entities[i];
-        apply_transform(e.transform);
-        draw_elements(e.db);
+
+        draw_texture(
+            e.db,
+            e.tr,
+            0,
+            white_texture,
+            false,
+            vec2_zero, vec2_one,
+            vec4_one, vec4_zero);
     }
 
 }

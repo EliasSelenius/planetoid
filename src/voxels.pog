@@ -9,8 +9,10 @@ struct VoxelGrid {
 
     uint32 numVerts;
     vertex2D* verts;
-    uint32* inds; // list
-    uint32* inds_outline; // list
+    uint32[..] inds;
+    uint32[..] inds_outline;
+
+    bool must_remesh;
 }
 
 const TopLeftBit = 8;
@@ -30,15 +32,19 @@ void add_outline(with VoxelGrid* grid, uint32 i1, uint32 i2) {
     list_add(*grid.inds_outline, *i2);
 }
 
-uint32 getIndex(uint32 res, uint32 x, uint32 y) {
+uint32 get_index(uint32 res, uint32 x, uint32 y) {
     return x * res + y;
 }
 
 VoxelGrid createVoxelGrid(uint32 res) {
     VoxelGrid grid = {};
+    grid.must_remesh = true;
 
     grid.res = res;
     grid.data = malloc(res * res * sizeof float32);
+    for 0 .. res*res {
+        grid.data[it] = 0;
+    }
 
     //              3r^2 - 2r
     grid.numVerts = 3 * grid.res * grid.res - 2 * grid.res;
@@ -47,7 +53,7 @@ VoxelGrid createVoxelGrid(uint32 res) {
     float32 half = grid.res as float32 / 2.0;
     for uint32 x : 0 .. grid.res {
         for uint32 y : 0 .. grid.res {
-            let i = getIndex(grid.res, x, y);
+            let i = get_index(grid.res, x, y);
             grid.verts[i].pos.x = x as float32 - half;
             grid.verts[i].pos.y = y as float32 - half;
         }
@@ -58,10 +64,11 @@ VoxelGrid createVoxelGrid(uint32 res) {
         grid.verts[i].uv = grid.verts[i].pos;
     }
 
-    grid.inds = list_create(sizeof uint32 as uint32);
-    grid.inds_outline = list_create(sizeof uint32 as uint32);
+    grid.inds = list_create(sizeof uint32);
+    grid.inds_outline = list_create(sizeof uint32);
 
-    grid.db = create_draw_buffers();
+    grid.db = create_draw_buffers(sizeof vertex2D, vertex2D_attribs);
+    bind_instance_buffer_to_vao(grid.db.vao, draw2d_renderer.vbo_instances);
 
     glGenBuffers(1, *grid.inds_outline_ebo);
 
@@ -102,7 +109,8 @@ uint8 get_mask(float32 p1, p2, p3, p4) {
     return mask;
 }
 
-void updateGridMesh(VoxelGrid* grid) {
+void remesh(VoxelGrid* grid) {
+    grid.must_remesh = false;
 
     list_clear(grid.inds);
     list_clear(grid.inds_outline);
@@ -131,10 +139,10 @@ void updateGridMesh(VoxelGrid* grid) {
             uint32 e1 = g2_byteoffset + x * grid.res + (y + 1);
             uint32 e4 = g2_byteoffset + x * grid.res + y;
 
-            uint32 i1 = getIndex(grid.res, x, y + 1);
-            uint32 i2 = getIndex(grid.res, x + 1, y + 1);
-            uint32 i3 = getIndex(grid.res, x, y);
-            uint32 i4 = getIndex(grid.res, x + 1, y);
+            uint32 i1 = get_index(grid.res, x, y + 1);
+            uint32 i2 = get_index(grid.res, x + 1, y + 1);
+            uint32 i3 = get_index(grid.res, x, y);
+            uint32 i4 = get_index(grid.res, x + 1, y);
 
             let p1 = grid.data[i1];
             let p2 = grid.data[i2];
@@ -255,8 +263,8 @@ void updateGridMesh(VoxelGrid* grid) {
         for uint32 x : 0 .. grid.res {
             for uint32 y : 0 .. size {
 
-                let p1 = grid.data[getIndex(grid.res, x, y)];
-                let p2 = grid.data[getIndex(grid.res, x, y + 1)];
+                let p1 = grid.data[get_index(grid.res, x, y)];
+                let p2 = grid.data[get_index(grid.res, x, y + 1)];
 
                 bool b1 = p1 != 0.0;
                 bool b2 = p2 != 0.0;
@@ -275,8 +283,8 @@ void updateGridMesh(VoxelGrid* grid) {
         for uint32 x : 0 .. size {
             for uint32 y : 0 .. grid.res {
 
-                let p1 = grid.data[getIndex(grid.res, x, y)];
-                let p2 = grid.data[getIndex(grid.res, x + 1, y)];
+                let p1 = grid.data[get_index(grid.res, x, y)];
+                let p2 = grid.data[get_index(grid.res, x + 1, y)];
 
                 bool b1 = p1 != 0.0;
                 bool b2 = p2 != 0.0;
@@ -293,7 +301,9 @@ void updateGridMesh(VoxelGrid* grid) {
         }
     }
 
-    update_buffers(*grid.db, grid.verts, grid.numVerts, grid.inds, list_length(grid.inds));
+
+    uint32 ind_count = list_length(grid.inds);
+    update_buffers(*grid.db, grid.verts, grid.numVerts, grid.inds as uint32*, ind_count);
     update_buffer(grid.inds_outline_ebo, list_length(grid.inds_outline) * sizeof uint32 as uint32, grid.inds_outline);
 }
 
@@ -306,6 +316,7 @@ vec2 getLocalCoords(VoxelGrid* grid, Transform2D transform, float32 x, float32 y
 }
 
 void add_circle(with VoxelGrid* grid, with Transform2D transform, float32 radius, float32 x, float32 y) {
+    grid.must_remesh = true;
 
     let p = getLocalCoords(grid, transform, x, y);
     int32 rx = round(p.x) as int32;
@@ -332,6 +343,7 @@ void add_circle(with VoxelGrid* grid, with Transform2D transform, float32 radius
 }
 
 void remove_circle(with VoxelGrid* grid, with Transform2D transform, float32 radius, float32 x, float32 y) {
+    grid.must_remesh = true;
 
     let p = getLocalCoords(grid, transform, x, y);
     int32 rx = round(p.x) as int32;
@@ -376,7 +388,7 @@ vec2 calcCenterOfMass(VoxelGrid* grid) {
     return res;
 }
 
-struct Intersection {
+struct Intersection2D {
     vec2 surface_normal;
     float32 distance;
 }
@@ -394,7 +406,7 @@ struct Ray {
     vec2 origin, dir;
 }
 
-int32 ray_lineseg_intersects(Ray ray, Lineseg seg, Intersection* out_intersection) {
+int32 ray_lineseg_intersects(Ray ray, Lineseg seg, Intersection2D* out_intersection) {
     let A = sub(seg.start, ray.origin);
     let B = sub(seg.end, ray.origin);
 
@@ -410,7 +422,7 @@ int32 ray_lineseg_intersects(Ray ray, Lineseg seg, Intersection* out_intersectio
     return false;
 }
 
-int32 point_intersects(vec2 point, VoxelGrid* grid, Transform2D transform, Intersection* out_intersection) {
+int32 point_intersects(vec2 point, VoxelGrid* grid, Transform2D transform, Intersection2D* out_intersection) {
 
     @out_intersection = {};
 
@@ -422,15 +434,16 @@ int32 point_intersects(vec2 point, VoxelGrid* grid, Transform2D transform, Inter
     if x < 0 or x >= res-1 return false;
     if y < 0 or y >= res-1 return false;
 
+    // TODO: use get_index
     let i1 = res * x + y + 1;
     let i2 = res * (x + 1) + y + 1;
     let i3 = res * x + y;
     let i4 = res * (x + 1) + y;
 
-    // let i1 = getIndex(grid.res, x, y + 1);
-    // let i2 = getIndex(grid.res, x + 1, y + 1);
-    // let i3 = getIndex(grid.res, x, y);
-    // let i4 = getIndex(grid.res, x + 1, y);
+    // let i1 = get_index(grid.res, x, y + 1);
+    // let i2 = get_index(grid.res, x + 1, y + 1);
+    // let i3 = get_index(grid.res, x, y);
+    // let i4 = get_index(grid.res, x + 1, y);
 
     let p1 = grid.data[i1];
     let p2 = grid.data[i2];
