@@ -19,3 +19,6 @@ output.raddbg
 
 *.exe
 shader_debug_log_*.txt
+
+# api trace files
+*.trace

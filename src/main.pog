@@ -24,8 +24,8 @@ include "src/world.pog";
 
 Transform2D camera;
 
-float32 voxel_edit_radius = 1;
-DrawBuffers voxelMesh_circle;
+float32 voxel_edit_radius = 0.5;
+DrawBuffers db_circle;
 
 Texture2D player_texture;
 Texture2D random_texture;
@@ -87,7 +87,19 @@ void load() {
 
     world_init();
 
-    voxelMesh_circle = genCircle(360, 1);
+    db_circle = genCircle(360, 1);
+}
+
+void draw_circle(vec2 pos, float32 radius, vec4 color) {
+    Transform2D tr = { pos = pos, scale = radius };
+    draw_texture(
+        db_circle,
+        tr,
+        -0.01,
+        white_texture,
+        false,
+        vec2_zero, vec2_one,
+        color, vec4_zero);
 }
 
 void main() {
@@ -132,9 +144,8 @@ void main() {
 
         dispatch_sprites(camera);
 
-        {
-            let planet = *planets[0];
-
+        let planet = player.planet;
+        if planet {
             InstanceData data = {
                 pos = make_vec(planet.tr.pos, 0),
                 0,
@@ -144,17 +155,72 @@ void main() {
             };
 
             set_instance_data(data);
-
             glBindVertexArray(planet.grid.db.vao);
+
+            // draw grid
             glDrawArrays(GL_POINTS, 0, planet.grid.numVerts as int32);
-            // glBindVertexArray(0);
 
             // draw outline
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planet.grid.inds_outline_ebo);
-            glDrawElements(GL_LINES, list_length(planet.grid.inds_outline), GL_UNSIGNED_INT, null);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planet.grid.db.ebo);
-            glBindVertexArray(0);
-        }
+            // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planet.grid.inds_outline_ebo);
+            // glDrawElements(GL_LINES, list_length(planet.grid.inds_outline), GL_UNSIGNED_INT, null);
+            // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planet.grid.db.ebo);
 
+            glBindVertexArray(0);
+
+            { // voxels
+                let mouse_coord = getMouseWorldCoord();
+
+                vec4 color = make_vec(1,1,1, 0.3);
+                Intersection2D inter = {};
+                if circle_intersects(*planet.grid, planet.tr, mouse_coord, voxel_edit_radius, *inter) {
+                    // print("Intersects ", inter.distance, "\n");
+                    color.y = 0;
+                    color.z = 0;
+                }
+
+                draw_circle(mouse_coord, voxel_edit_radius, color);
+
+                {
+                    let p = get_local_coords(*planet.grid, planet.tr, mouse_coord.x, mouse_coord.y);
+                    int32 ix = (p.x) as int32;
+                    int32 iy = (p.y) as int32;
+
+                    int32 ir = (voxel_edit_radius + 1) as int32;
+                    int32 y_min = iy - ir;
+                    int32 y_max = iy + ir;
+                    int32 x_min = ix - ir;
+                    int32 x_max = ix + ir;
+
+                    for y : y_min .. y_max+1
+                    for x : x_min .. x_max+1 {
+                        Transform2D tr = {};
+                        tr.scale = 1;
+                        tr.rot = planet.tr.rot;
+                        tr.pos = get_world_coords(*planet.grid, planet.tr, x + 0.5, y + 0.5);
+
+                        vec4 color = opacity(vec4_one, 0.1);
+                        if x == inter.cell.x and y == inter.cell.y {
+                            color.x = 0;
+                            color.y = 0;
+                        }
+
+                        draw_texture(
+                            draw2d_renderer.quad_db,
+                            tr,
+                            -0.01,
+                            white_texture,
+                            false,
+                            vec2_zero, vec2_one,
+                            color, vec4_zero);
+                    }
+                }
+
+                if mouse(Left_Mouse) {
+                    add_circle(*planet.grid, planet.tr, voxel_edit_radius, mouse_coord.x, mouse_coord.y);
+                } else if mouse(Right_Mouse) {
+                    remove_circle(*planet.grid, planet.tr, voxel_edit_radius, mouse_coord.x, mouse_coord.y);
+                }
+            }
+        }
     }
 }

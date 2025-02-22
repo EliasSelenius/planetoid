@@ -2,6 +2,7 @@
 struct VoxelGrid {
 
     float32* data;
+    uint8* material;
     uint32 res;
 
     DrawBuffers db;
@@ -42,8 +43,11 @@ VoxelGrid createVoxelGrid(uint32 res) {
 
     grid.res = res;
     grid.data = malloc(res * res * sizeof float32);
+    grid.material = malloc(res * res * sizeof uint8);
+
     for 0 .. res*res {
         grid.data[it] = 0;
+        grid.material[it] = (random01()*3) as uint8;
     }
 
     //              3r^2 - 2r
@@ -302,23 +306,34 @@ void remesh(VoxelGrid* grid) {
     }
 
 
+    for 0 .. grid.res * grid.res {
+        let mat_id = grid.material[it];
+        Color[] colors = { White, Blue, Gray };
+        grid.verts[it].color = colors[mat_id];
+    }
+
+
     uint32 ind_count = list_length(grid.inds);
     update_buffers(*grid.db, grid.verts, grid.numVerts, grid.inds as uint32*, ind_count);
     update_buffer(grid.inds_outline_ebo, list_length(grid.inds_outline) * sizeof uint32 as uint32, grid.inds_outline);
 }
 
-vec2 getLocalCoords(VoxelGrid* grid, Transform2D transform, float32 x, float32 y) {
-    let p = world2local(transform, x, y);
+vec2 get_local_coords(VoxelGrid* grid, Transform2D tr, vec2 pos) return get_local_coords(grid, tr, pos.x, pos.y);
+vec2 get_local_coords(VoxelGrid* grid, Transform2D tr, float32 x, y) {
     float32 half = grid.res as float32 / 2.0;
-    p.x += half;
-    p.y += half;
-    return p;
+    return world2local(tr, x, y) + make_vec2(half);
 }
 
-void add_circle(with VoxelGrid* grid, with Transform2D transform, float32 radius, float32 x, float32 y) {
+vec2 get_world_coords(VoxelGrid* grid, Transform2D tr, vec2 pos) return get_world_coords(grid, tr, pos.x, pos.y);
+vec2 get_world_coords(VoxelGrid* grid, Transform2D tr, float32 x, y) {
+    float32 half = grid.res as float32 / 2.0;
+    return local2world(tr, x - half, y - half);
+}
+
+void add_circle(with VoxelGrid* grid, with Transform2D transform, float32 radius, x, y) {
     grid.must_remesh = true;
 
-    let p = getLocalCoords(grid, transform, x, y);
+    let p = get_local_coords(grid, transform, x, y);
     int32 rx = round(p.x) as int32;
     int32 ry = round(p.y) as int32;
 
@@ -342,10 +357,10 @@ void add_circle(with VoxelGrid* grid, with Transform2D transform, float32 radius
     }
 }
 
-void remove_circle(with VoxelGrid* grid, with Transform2D transform, float32 radius, float32 x, float32 y) {
+void remove_circle(with VoxelGrid* grid, with Transform2D transform, float32 radius, x, y) {
     grid.must_remesh = true;
 
-    let p = getLocalCoords(grid, transform, x, y);
+    let p = get_local_coords(grid, transform, x, y);
     int32 rx = round(p.x) as int32;
     int32 ry = round(p.y) as int32;
 
@@ -391,11 +406,7 @@ vec2 calcCenterOfMass(VoxelGrid* grid) {
 struct Intersection2D {
     vec2 surface_normal;
     float32 distance;
-}
-
-vec2 rot90deg(vec2 v) {
-    vec2 res = make_vec(-v.y, v.x); // rotate 90 degrees to the left. (multiplication with imaginary unit)
-    return res;
+    ivec2 cell;
 }
 
 struct Lineseg {
@@ -422,28 +433,20 @@ int32 ray_lineseg_intersects(Ray ray, Lineseg seg, Intersection2D* out_intersect
     return false;
 }
 
-int32 point_intersects(vec2 point, VoxelGrid* grid, Transform2D transform, Intersection2D* out_intersection) {
+bool get_lineseg(VoxelGrid* grid, Transform2D tr, int32 ix, iy, Lineseg* seg) {
+    @seg = {};
 
-    @out_intersection = {};
-
-    point = getLocalCoords(grid, transform, point.x, point.y);
-    int32 x = point.x as int32;
-    int32 y = point.y as int32;
     int32 res = grid.res as int32;
+    if ix < 0 or ix >= res-1 return false;
+    if iy < 0 or iy >= res-1 return false;
 
-    if x < 0 or x >= res-1 return false;
-    if y < 0 or y >= res-1 return false;
+    uint32 x = ix as uint32;
+    uint32 y = iy as uint32;
 
-    // TODO: use get_index
-    let i1 = res * x + y + 1;
-    let i2 = res * (x + 1) + y + 1;
-    let i3 = res * x + y;
-    let i4 = res * (x + 1) + y;
-
-    // let i1 = get_index(grid.res, x, y + 1);
-    // let i2 = get_index(grid.res, x + 1, y + 1);
-    // let i3 = get_index(grid.res, x, y);
-    // let i4 = get_index(grid.res, x + 1, y);
+    let i1 = get_index(grid.res, x, y + 1);
+    let i2 = get_index(grid.res, x + 1, y + 1);
+    let i3 = get_index(grid.res, x, y);
+    let i4 = get_index(grid.res, x + 1, y);
 
     let p1 = grid.data[i1];
     let p2 = grid.data[i2];
@@ -460,9 +463,8 @@ int32 point_intersects(vec2 point, VoxelGrid* grid, Transform2D transform, Inter
     // let e1 = g2_byteoffset + x * grid.res + (y + 1);
     // let e4 = g2_byteoffset + x * grid.res + y;
 
-
-    vec2 a;
-    vec2 b;
+    vec2 a = {};
+    vec2 b = {};
     switch (mask) {
         // corners
         case TopLeftBit:
@@ -524,24 +526,85 @@ int32 point_intersects(vec2 point, VoxelGrid* grid, Transform2D transform, Inter
         // case TopRightBit | BottomLeftBit: break;
 
         // solid block
-        case 0x0F: return true;
+        case 0x0F: return false;
         // air
         case 0x0: return false;
 
         default: return false;
     }
 
+    seg.start = a;
+    seg.end = b;
 
-    vec2 local = sub(point, make_vec(x, y));
-    local = sub(local, a);
+    return true;
+}
 
-    vec2 normal = rot90deg(sub(b, a));
-    normal = normalize(normal);
+bool point_intersects(VoxelGrid* grid, Transform2D tr, vec2 point, Intersection2D* out_intersection) {
 
-    out_intersection.distance = dot(normal, local);
-    out_intersection.surface_normal = rotate_vec(normal, transform.rot);
+    @out_intersection = {};
 
-    if out_intersection.distance <= 0 return true;
+    point = get_local_coords(grid, tr, point.x, point.y);
+    int32 x = point.x as int32;
+    int32 y = point.y as int32;
+
+    Lineseg seg = {};
+    if get_lineseg(grid, tr, x, y, *seg) {
+        vec2 local = point - make_vec(x, y) - seg.start;
+        vec2 normal = normalize(rot90deg(seg.end - seg.start));
+
+        out_intersection.distance = dot(normal, local);
+        out_intersection.surface_normal = rotate_vec(normal, tr.rot);
+
+        if out_intersection.distance <= 0 return true;
+    }
+
+    return false;
+}
+
+vec2 closest_point_on_linesegment(vec2 a, b, p) {
+    let ab = b - a;
+    let t = clamp(dot(ab, p - a) / dot(ab, ab), 0, 1);
+    return lerp(t, a, b);
+}
+
+bool circle_intersects(VoxelGrid* grid, Transform2D tr, vec2 center, float32 radius, Intersection2D* inter) {
+
+    @inter = {};
+
+    center = get_local_coords(grid, tr, center.x, center.y);
+    int32 ix = center.x as int32;
+    int32 iy = center.y as int32;
+
+    int32 ir = (radius + 1) as int32;
+    int32 y_min = iy - ir;
+    int32 y_max = iy + ir;
+    int32 x_min = ix - ir;
+    int32 x_max = ix + ir;
+
+    for y : y_min .. y_max+1
+    for x : x_min .. x_max+1 {
+        Lineseg seg = {};
+        if get_lineseg(grid, tr, x, y, *seg) {
+            let v = make_vec(x, y);
+            let p = closest_point_on_linesegment(v + seg.start,
+                                                 v + seg.end,
+                                                 center);
+            let d = circle_dist(center, radius, p, 0);
+
+            draw_circle(get_world_coords(grid, tr, center),        0.1, make_vec(1,1,0, 0.2));
+            draw_circle(get_world_coords(grid, tr, v + seg.start), 0.1, make_vec(0,1,0, 0.2));
+            draw_circle(get_world_coords(grid, tr, v + seg.end  ), 0.1, make_vec(0,1,0, 0.2));
+            draw_circle(get_world_coords(grid, tr, p),             0.1, make_vec(0,1,1, 0.2));
+
+            if d <= 0 {
+                inter.distance = d;
+                inter.surface_normal = rotate_vec(normalize(rot90deg(seg.end - seg.start)), tr.rot);
+
+                inter.cell = make_ivec(x, y);
+                return true;
+            }
+        }
+    }
 
     return false;
 }
