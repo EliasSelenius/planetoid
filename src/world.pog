@@ -1,10 +1,56 @@
 
+
+const Item_Count = 3;
+enum Item_Type {
+    Grenade;
+    Drill;
+    Bazooka;
+}
+
+string item_name(Item_Type it) switch (it) {
+    case .Grenade:  return make_string("Grenade");
+    case .Drill:    return make_string("Drill");
+    case .Bazooka:  return make_string("Bazooka");
+
+    default: return make_string("");
+}
+
+struct Inventory {
+    uint32[Item_Count] items;
+}
+
+enum Entity_Type {
+    Other;
+    Despawned;
+    Ready_For_Reuse;
+    Guy;
+    Grenade;
+}
+
 struct Entity {
     Planet* planet;
-    Transform2D tr;
+
+    Entity_Type en_type;
+
     DrawBuffers db;
+    Texture2D tex;
+
+    Transform2D tr;
     vec2 vel;
+    float32 ang_vel;
+    float32 cof; // coefficient of friction
+
+    float32 life_time;
+    float32 radius;
+    bool grounded;
+    vec2 normal;
+
+    Inventory* inv;
+    Item_Type selected_item;
 }
+
+bool is_inactive(Entity* en) return en.en_type == Entity_Type.Despawned or en.en_type == Entity_Type.Ready_For_Reuse;
+void despawn(Entity* en) en.en_type = .Despawned;
 
 struct Planet {
     VoxelGrid grid;
@@ -26,41 +72,113 @@ Entity* player;
 const planets_count = 9;
 Planet* planets;
 
+Particle[..] particles = list_create(sizeof Particle);
+struct Particle {
+    Transform2D tr;
+    float32 depth;
 
-Entity* appendEntity(DrawBuffers db) {
+    vec2 vel;
+    float32 ang_vel;
+
+    float32 life_time;
+}
+
+Particle* spawn_particle(Particle p) {
+    list_add(*particles, *p);
+}
+
+Entity* spawn_entity(DrawBuffers db) {
     if entities_count >= entities_capacity {
-        print("Failed to append entity. Max limit reached.");
+        print("Failed to append entity. Max limit reached.\n");
         return null;
     }
 
-    let res = *entities[entities_count++];
-    res.tr.pos = make_vec(0, 0);
-    res.tr.scale = 1;
-    res.tr.rot = 0;
-    res.db = db;
-    res.vel = make_vec(0, 0);
+    Entity* en = null;
+    for 0 .. entities_count {
+        let o = *entities[it];
+        if o.en_type == Entity_Type.Ready_For_Reuse {
+            en = o;
+            break;
+        }
+    }
+
+    if en == null  en = *entities[entities_count++];
+
+    @en = {};
+    en.tr.scale = 1;
+    en.db = db;
+    en.cof = 1;
+    return en;
+}
+
+Entity* spawn_guy(vec2 pos) {
+    let en = spawn_entity(db_quad);
+    en.en_type = .Guy;
+    en.tex = player_texture;
+    en.tr.scale = (1.0 / en.tex.width);
+    en.radius = 0.5;
+    en.tr.pos = pos;
+    en.cof = 0.5;
+    return en;
+}
+
+void cleanup_entity_pool() {
+    for 0 .. entities_count {
+        let en = *entities[it];
+        if en.en_type == Entity_Type.Despawned {
+            en.en_type = .Ready_For_Reuse;
+        }
+    }
+}
+
+Planet* get_planet_of_influence(vec2 pos) {
+    Planet* res = null;
+    float32 min_sq_dist = 99999999999;
+
+    for 0 .. planets_count {
+        Planet* planet = *planets[it];
+        let radius = planet.radius * 2;
+        let sq_dist = sqdist(planet.tr.pos, pos);
+        if sq_dist < radius*radius {
+            if sq_dist < min_sq_dist {
+                res = planet;
+                min_sq_dist = sq_dist;
+            }
+        }
+    }
+
     return res;
+}
+
+void draw_trajectory(vec2 pos, vel) {
+    // let dt = deltatime();
+    float32 dt = 1 / 60.0;
+
+    for 0 .. 100 {
+        pos = pos + vel*dt;
+
+        let p = get_planet_of_influence(pos);
+        if p {
+            let down = noz(p.tr.pos - pos);
+            vel = vel + down*9.8*dt;
+        }
+
+        draw_circle(pos, 0.05, vec4_one);
+    }
 }
 
 void update_entity(Entity* en) {
     let dt = deltatime();
     en.tr.pos = en.tr.pos + en.vel * dt;
 
-    en.planet = null;
-    float32 min_sq_dist = 99999999999;
-    for 0 .. planets_count {
-        Planet* planet = *planets[it];
-        let radius = planet.radius * 2;
-        let sq_dist = sqdist(planet.tr.pos, en.tr.pos);
-        if sq_dist < radius*radius {
-            if sq_dist < min_sq_dist {
-                en.planet = planet;
-                min_sq_dist = sq_dist;
-            }
-        }
-    }
+    en.planet = get_planet_of_influence(en.tr.pos);
+
+    bool collided = false;
 
     if en.planet {
+
+        collided = check_collision(en.planet, en);
+
         vec2 diff = en.planet.tr.pos - en.tr.pos;
         let sq_dist = sqlength(diff);
         vec2 down = noz(diff);
@@ -72,7 +190,6 @@ void update_entity(Entity* en) {
         // en.vel = en.vel + gravity*dt;
         en.vel = en.vel + down*9.8*dt;
 
-        check_collision(en.planet, en);
 
         float32 floor2multiple(float32 x, n) return floorf(x/n) * n;
 
@@ -85,68 +202,87 @@ void update_entity(Entity* en) {
 
         en.tr.rot = exp_decay(en.tr.rot, target_angle, 3, dt);
 
-        float32 text_h = 0.05;
-        draw_text(make_vec(0, 0.02), text_h, to_string((en.tr.rot * rad2deg) as int32), White);
-        draw_text(make_vec(0, 0.02 - text_h), text_h, to_string((target_angle * rad2deg) as int32), White);
+        // float32 text_h = 0.05;
+        // draw_text(make_vec(0, 0.02), text_h, to_string((en.tr.rot * rad2deg) as int32), White);
+        // draw_text(make_vec(0, 0.02 - text_h), text_h, to_string((target_angle * rad2deg) as int32), White);
     }
 
+    en.grounded = collided;
+
+    switch (en.en_type) {
+        case .Other: break;
+        case .Despawned: break;
+        case .Ready_For_Reuse: break;
+        case .Guy: break;
+        case .Grenade: {
+            if en.life_time >= 4 {
+                if en.planet {
+                    remove_circle(*en.planet.grid, en.planet.tr, 2, en.tr.pos);
+                }
+
+                despawn(en);
+            }
+        } break;
+
+        default: break;
+    }
+
+    en.life_time += dt;
 }
 
-void check_collision(Planet* planet, Entity* en) {
+bool check_collision(Planet* planet, Entity* en) {
 
-    draw_circle(en.tr.pos, 0.5, make_vec(1,1,1, 0.3));
+    draw_circle(en.tr.pos, en.radius, make_vec(1,1,1, 0.3));
 
-    Intersection2D inter;
+    en.normal = vec2_zero;
+
+    Intersection2D inter = {};
     // if point_intersects(*planet.grid, planet.tr, en.tr.pos, *inter) {
-    if circle_intersects(*planet.grid, planet.tr, en.tr.pos, 0.5, *inter) {
+    if circle_intersects(*planet.grid, planet.tr, en.tr.pos, en.radius, *inter) {
+        en.normal = inter.surface_normal;
 
         vec2 normal = inter.surface_normal;
-        vec2 correction = mul(normal, -inter.distance);
-        en.tr.pos = add(en.tr.pos, correction);
+        vec2 correction = normal * -inter.distance;
+        en.tr.pos = en.tr.pos + correction;
 
-        // en.vel = reflect(en.vel, normal); // bounce
-        en.vel = add(en.vel, mul(normal, -dot(en.vel, normal))); // cancel velocity in direction of surface
+        // float32 bounce = 1;
+        // let ref = (reflect(en.vel, normal) - en.vel) * bounce;
+
+        let new_vel = en.vel + normal * -dot(en.vel, normal); // cancel velocity in direction of surface
+
+        let normal_force = -dot(en.vel, normal); // * en.mass;
+        let fric_dir = neg(noz(new_vel));
+        let fric = fric_dir * normal_force * en.cof;
+        en.vel = new_vel + fric; //  + ref;
+
+        return true;
     }
+
+    return false;
 }
 
-DrawBuffers genCircle(int32 res, float32 radius) {
-    uint32 vertsCount = res as uint32 + 1;
-    vertex2D* verts = malloc(vertsCount * sizeof vertex2D);
-    verts[0] = {
-        pos = {},
-        uv = {},
-        color = White
-    };
+struct Rigidbody2D {
+    vec2 vel;
+    float32 mass;
+    float32 cof; // coefficient of friction
+    float32 ang_vel;
+}
 
-    for i : 1 .. res + 1 {
-        float32 angle = i * Tau / res;
-        verts[i].pos.x = cosf(angle) * radius;
-        verts[i].pos.y = sinf(angle) * radius;
+void collision_response(Transform2D* tr, Rigidbody2D* rb, Intersection2D inter) {
+    vec2 normal = inter.surface_normal;
+    vec2 correction = normal * -inter.distance;
+    tr.pos = tr.pos + correction;
 
-        verts[i].color = White;
-    }
+    // float32 bounce = 1;
+    // let ref = (reflect(rb.vel, normal) - rb.vel) * bounce;
 
-    uint32 indsCount = (res as uint32) * 3;
-    uint32* inds = malloc(indsCount * sizeof uint32);
-    uint32 i = 0;
-    uint32 v = 1;
-    while i < indsCount {
-        inds[i] = 0;
-        inds[i+1] = v++;
-        inds[i+2] = v;
-        i += 3;
-    }
+    let new_vel = rb.vel + normal * -dot(rb.vel, normal); // cancel velocity in direction of surface
 
-    inds[i - 1] = 1;
+    let normal_force = -dot(rb.vel, normal); // * rb.mass;
+    let fric_dir = neg(noz(new_vel));
+    let fric = fric_dir * normal_force * rb.cof;
+    rb.vel = new_vel + fric; //  + ref;
 
-    let db = create_draw_buffers(sizeof vertex2D, vertex2D_attribs);
-    update_buffers(*db, verts, vertsCount, inds, indsCount);
-    free(verts);
-    free(inds);
-
-    bind_instance_buffer_to_vao(db.vao, draw2d_renderer.vbo_instances);
-
-    return db;
 }
 
 void draw_planet(Planet* planet) {
@@ -155,23 +291,15 @@ void draw_planet(Planet* planet) {
         remesh(*planet.grid);
     }
 
+    draw_circle(planet.tr.pos, planet.radius*2, make_vec(1,1,1, 0.1));
 
-    Transform2D tr = planet.tr;
-    tr.scale = planet.radius * 2;
-    draw_texture(
-        db_circle,
-        tr,
-        0,
-        white_texture,
-        false,
-        vec2_zero, vec2_one,
-        make_vec(1,1,1, 0.1), vec4_zero);
-
+    Transform2D planet_tr = planet.tr;
+    planet_tr.scale = (1.0 / random_texture.width);
     draw_texture(
         planet.grid.db,
-        planet.tr,
+        planet_tr,
         0,
-        white_texture,
+        random_texture,
         false,
         vec2_zero, vec2_one,
         vec4_one, vec4_zero);
@@ -226,44 +354,100 @@ VoxelGrid generate_planet_grid(Planet* planet) {
     return grid;
 }
 
-void update_player() {
-    float32 dt = deltatime();
-
-    if key('F') { player.vel.x = 0.0; player.vel.y = 0.0; }
-
-    float32 c = cosf(player.tr.rot);
-    float32 s = sinf(player.tr.rot);
-    // vec2 dir = make_vec(dot(make_vec(c, s), Input.wasd), dot(make_vec(-s, c), Input.wasd));
-
-    mat2 m = { c, s, -s, c };
-    vec2 dir = m * Input.wasd;
-    player.vel = player.vel + dir*13*dt;
-
-    player.tr.rot += input_axis('Q', 'E') * 0.05;
-
-    // TODO: exponential decay?
-    camera.pos = player.tr.pos;
-    camera.rot = player.tr.rot;
-}
-
 void world_init() {
     camera.rot = 0;
-    camera.scale = 400;
+    camera.scale = (400);
 
     entities = malloc(sizeof(Entity) * entities_capacity);
     planets = malloc(sizeof(Planet) * planets_count);
 
+    float32 orbit_dist = 1000;
     for i : 0 .. planets_count {
-        float32 r = 30.0 + random(i as int32) * 20;
-        Planet p = generate_planet(r, 1000 + 100 * i);
+        float32 radius = random_range(i as int32, 30, 100);
+        orbit_dist += radius * 2;
+        Planet p = generate_planet(radius, orbit_dist);
+        orbit_dist += radius * 2;
         planets[i] = p;
     }
 
-    player = appendEntity(genCircle(4, 0.1f));
-    player.tr.pos = { 1000, planets[0].radius };
+    vec2 spawn_pos = { planets[0].orbit_dist, planets[0].radius * 4/5.0 };
+    player = spawn_guy(spawn_pos);
+}
+
+void update_player() {
+    float32 dt = deltatime();
+
+    if key('F')  player.vel = {};
+
+    player.tr.rot += input_axis('Q', 'E') * dt;
+
+    float32 c = cosf(player.tr.rot);
+    float32 s = sinf(player.tr.rot);
+    mat2 m = { c, s, -s, c };
+    vec2 up = m * vec2_unit_y;
+    vec2 left = rot90deg(up);
+
+    if Input.wasd.y > 0 {
+
+        vec2 dir = up*9.8*1.3 - left*Input.wasd.x*5;
+        player.vel = player.vel + dir*dt;
+
+
+        Particle p = {};
+        p.tr.pos = player.tr.pos;
+        p.tr.scale = 0.3;
+        p.tr.rot = random_range(-Pi, Pi);
+        p.vel = player.vel + neg(dir) + random_vec2(3);
+        p.ang_vel = random_range(-Pi, Pi) * 10;
+        spawn_particle(p);
+    }
+
+
+    if player.grounded {
+
+        if key_pressed(GLFW_KEY_SPACE) {
+            player.vel = player.vel + up*7;
+        }
+    }
+
+    if !key(GLFW_KEY_LEFT_CONTROL) {
+        player.selected_item = ((player.selected_item + Input.mouse_scroll) as uint32) % Item_Count;
+    }
+
+    draw_text(vec2_zero, 0.05, item_name(player.selected_item), White);
+    switch (player.selected_item) {
+        case .Grenade: {
+            let mouse_coord = getMouseWorldCoord();
+            let diff = mouse_coord - player.tr.pos;
+            let dir = noz(diff);
+            vec2 vel = player.vel + dir * 5 * clamp(length(diff)/2, 1, 3);
+            vec2 start_pos = player.tr.pos + dir*player.radius;
+            draw_trajectory(start_pos, vel);
+
+            if mouse_pressed(Left_Mouse) {
+                let g = spawn_entity(db_circle);
+                g.tex = white_texture;
+                g.en_type = .Grenade;
+                g.radius = 0.1;
+                g.tr.scale = (g.radius);
+                g.tr.pos = start_pos;
+                g.vel = vel;
+                g.cof = 0.1;
+            }
+
+        } break;
+        case .Drill: if player.planet modify_terrain(player.planet); break;
+        case .Bazooka: break;
+    }
+
+    camera.pos = exp_decay(camera.pos, player.tr.pos, 10, dt);
+    camera.rot = exp_decay(camera.rot, player.tr.rot, 10, dt);
+
+    // draw_trajectory(player.tr.pos, player.vel);
 }
 
 void world_update() {
+    let dt = deltatime();
 
     float32 time = app.total_run_time;
     // time += 10000.0;
@@ -280,28 +464,134 @@ void world_update() {
     // draw_text({0, 0} as vec2, 0.1, make_string("Hello"), White);
 
 
-    for i : 0 .. entities_count {
-        let e = *entities[i];
+    for 0 .. entities_count {
+        let e = *entities[it];
+        if is_inactive(e) continue;
         update_entity(e);
     }
 
-    update_player();
+    if player {
+        update_player();
+    } else {
 
-    for i : 0 .. entities_count {
-        let e = *entities[i];
+    }
 
-        let tr = e.tr;
-        tr.scale = 1.0 / player_texture.width;
+    {
+        void quad(vec2 pos, float32 d, vec4 color) {
+            Transform2D tr = {};
+            tr.pos = pos + {planets[0].orbit_dist, planets[0].radius * 4/5.0} + {0, 2};
+            tr.scale = 1;
+            draw_quad(tr, d, color);
+        }
+
+        vec4 gray = make_vec(vec3_one*0.6, 1);
+        vec4 dark = make_vec(vec3_one*0.1, 1);
+
+        float32 dep = 0.01;
+
+        quad(make_vec(0, 0), -dep, gray);
+        quad(make_vec(1, 0), -dep, gray);
+        quad(make_vec(2, 0), -dep, gray);
+        quad(make_vec(3, 0), -dep, gray);
+        quad(make_vec(0, 3), -dep, gray);
+        quad(make_vec(1, 3), -dep, gray);
+        quad(make_vec(2, 3), -dep, gray);
+        quad(make_vec(3, 3), -dep, gray);
+
+        quad(make_vec(0, 1), dep, dark);
+        quad(make_vec(1, 1), dep, dark);
+        quad(make_vec(2, 1), dep, dark);
+        quad(make_vec(3, 1), dep, dark);
+        quad(make_vec(0, 2), dep, dark);
+        quad(make_vec(1, 2), dep, dark);
+        quad(make_vec(2, 2), dep, dark);
+        quad(make_vec(3, 2), dep, dark);
+    }
+
+    draw_clouds(*planets[0]);
+
+    for 0 .. list_length(particles) {
+        let p = *particles[it];
+
+        p.tr.pos = p.tr.pos + p.vel*dt;
+        p.tr.rot += p.ang_vel*dt;
+
+        bool despawn = false;
+
+        let planet = get_planet_of_influence(p.tr.pos);
+        if planet {
+
+            Intersection2D inter;
+            if point_intersects(*planet.grid, planet.tr, p.tr.pos, *inter) {
+                despawn = true;
+            }
+
+            vec2 diff = planet.tr.pos - p.tr.pos;
+            vec2 down = noz(diff);
+            p.vel = p.vel + down*9.8*dt;
+        }
+
         draw_texture(
-            draw2d_renderer.quad_db, //e.db,
-            tr,
+            db_quad,
+            p.tr,
+            p.depth,
+            white_texture,
+            false,
+            vec2_zero, vec2_one,
+            vec4_one, vec4_zero);
+
+        p.life_time += dt;
+
+        if despawn {
+            list_unordered_remove(particles, it);
+            it--;
+        }
+    }
+
+    for 0 .. entities_count {
+        let e = *entities[it];
+        if is_inactive(e) continue;
+
+        draw_texture(
+            e.db,
+            e.tr,
             0,
-            player_texture,
+            e.tex,
             false,
             vec2_zero, vec2_one,
             vec4_one, vec4_zero);
     }
 
+
+    cleanup_entity_pool();
+}
+
+void draw_clouds(Planet* p) {
+
+    int32 seed = 0;
+    vec4 color = {1,1,1, 1};
+
+    uint32 num_clouds = 100;
+    for 0 .. num_clouds {
+        float32 angle = it / (num_clouds as float32) * Tau;
+
+        let tex = texture_cloud; // white_texture;
+
+        Transform2D tr = {};
+        tr.scale = 20.0 / tex.width;
+        tr.pos = p.tr.pos + {cosf(angle), sinf(angle)} * p.radius * 5/4.0 + random_vec2(seed++, 10);
+        tr.rot = random_range(seed++, -Pi, Pi) + app.total_run_time * Tau * random_range(seed++, -0.005, 0.005);
+
+        float32 depth = random_range(seed++, -0.1, 0.1);
+        draw_texture(
+            db_quad,
+            tr,
+            depth,
+            tex,
+            true,
+            vec2_zero, vec2_one,
+            color, vec4_zero);
+    }
 }
 
 vec2 getMouseWorldCoord() {
@@ -325,4 +615,44 @@ vec2 getMouseWorldCoord() {
     // res.y = -s*x + c*y + camera.pos.y;
     let res = local2world(camera, x, y);
     return res;
+}
+
+DrawBuffers genCircle(int32 res, float32 radius) {
+    uint32 vertsCount = res as uint32 + 1;
+    vertex2D* verts = malloc(vertsCount * sizeof vertex2D);
+    verts[0] = {
+        pos = {},
+        uv = {},
+        color = White
+    };
+
+    for i : 1 .. res + 1 {
+        float32 angle = i * Tau / res;
+        verts[i].pos.x = cosf(angle) * radius;
+        verts[i].pos.y = sinf(angle) * radius;
+
+        verts[i].color = White;
+    }
+
+    uint32 indsCount = (res as uint32) * 3;
+    uint32* inds = malloc(indsCount * sizeof uint32);
+    uint32 i = 0;
+    uint32 v = 1;
+    while i < indsCount {
+        inds[i] = 0;
+        inds[i+1] = v++;
+        inds[i+2] = v;
+        i += 3;
+    }
+
+    inds[i - 1] = 1;
+
+    let db = create_draw_buffers(sizeof vertex2D, vertex2D_attribs);
+    update_buffers(*db, verts, vertsCount, inds, indsCount);
+    free(verts);
+    free(inds);
+
+    bind_instance_buffer_to_vao(db.vao, draw2d_renderer.vbo_instances);
+
+    return db;
 }

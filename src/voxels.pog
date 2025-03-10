@@ -22,10 +22,21 @@ const BottomLeftBit = 2;
 const BottomRightBit = 1;
 
 
-void add_tri(with VoxelGrid* grid, uint32 i1, uint32 i2, uint32 i3) {
+void add_tri(with VoxelGrid* grid, uint32 i1,i2,i3) {
     list_add(*grid.inds, *i1);
     list_add(*grid.inds, *i2);
     list_add(*grid.inds, *i3);
+}
+
+void add_tris(with VoxelGrid* grid, uint32 i1,i2,i3,  i4,i5,i6) {
+    add_tri(grid, i1,i2,i3);
+    add_tri(grid, i4,i5,i6);
+}
+
+void add_tris(with VoxelGrid* grid, uint32 i1,i2,i3,  i4,i5,i6,  i7,i8,i9) {
+    add_tri(grid, i1,i2,i3);
+    add_tri(grid, i4,i5,i6);
+    add_tri(grid, i7,i8,i9);
 }
 
 void add_outline(with VoxelGrid* grid, uint32 i1, uint32 i2) {
@@ -158,67 +169,30 @@ void remesh(VoxelGrid* grid) {
             switch (mask) {
 
                 // corners
-                case TopLeftBit: add_tri(grid, i1, e2, e1); break;
-                case TopRightBit: add_tri(grid, i2, e1, e3); break;
+                case TopLeftBit:     add_tri(grid, i1, e2, e1); break;
+                case TopRightBit:    add_tri(grid, i2, e1, e3); break;
                 case BottomRightBit: add_tri(grid, i4, e3, e4); break;
-                case BottomLeftBit: add_tri(grid, i3, e4, e2); break;
+                case BottomLeftBit:  add_tri(grid, i3, e4, e2); break;
 
                 // inverted corners
-                case 0x0F & ~TopLeftBit:
-                    add_tri(grid, i4, e1, e2);
-                    add_tri(grid, i4, i2, e1);
-                    add_tri(grid, i4, e2, i3);
-                    break;
-                case 0x0F & ~TopRightBit:
-                    add_tri(grid, i3, e3, e1);
-                    add_tri(grid, i3, i4, e3);
-                    add_tri(grid, i3, e1, i1);
-                    break;
-                case 0x0F & ~BottomRightBit:
-                    add_tri(grid, i1, e4, e3);
-                    add_tri(grid, i1, e3, i2);
-                    add_tri(grid, i1, i3, e4);
-                    break;
-                case 0x0F & ~BottomLeftBit:
-                    add_tri(grid, i2, e2, e4);
-                    add_tri(grid, i2, i1, e2);
-                    add_tri(grid, i2, e4, i4);
-                    break;
+                case 0x0F & ~TopLeftBit:     add_tris(grid, i4,e1,e2,  i4,i2,e1,  i4,e2,i3); break;
+                case 0x0F & ~TopRightBit:    add_tris(grid, i3,e3,e1,  i3,i4,e3,  i3,e1,i1); break;
+                case 0x0F & ~BottomRightBit: add_tris(grid, i1,e4,e3,  i1,e3,i2,  i1,i3,e4); break;
+                case 0x0F & ~BottomLeftBit:  add_tris(grid, i2,e2,e4,  i2,i1,e2,  i2,e4,i4); break;
 
                 // horizontal 'walls'
-                case TopLeftBit | TopRightBit:
-                    add_tri(grid, i1, e2, i2);
-                    add_tri(grid, i2, e2, e3);
-                    break;
-                case BottomLeftBit | BottomRightBit:
-                    add_tri(grid, i3, e3, e2);
-                    add_tri(grid, i4, e3, i3);
-                    break;
+                case TopLeftBit | TopRightBit:       add_tris(grid, i1,e2,i2,  i2,e2,e3); break;
+                case BottomLeftBit | BottomRightBit: add_tris(grid, i3,e3,e2,  i4,e3,i3); break;
                 // vertical 'walls'
-                case TopLeftBit | BottomLeftBit:
-                    add_tri(grid, i1, i3, e1);
-                    add_tri(grid, i3, e4, e1);
-                    break;
-                case TopRightBit | BottomRightBit:
-                    add_tri(grid, i2, e1, i4);
-                    add_tri(grid, i4, e1, e4);
-                    break;
+                case TopLeftBit | BottomLeftBit:     add_tris(grid, i1,i3,e1,  i3,e4,e1); break;
+                case TopRightBit | BottomRightBit:   add_tris(grid, i2,e1,i4,  i4,e1,e4); break;
 
                 // diagonals
-                case TopLeftBit | BottomRightBit:
-                    add_tri(grid, i1, e2, e1);
-                    add_tri(grid, i4, e3, e4);
-                    break;
-                case TopRightBit | BottomLeftBit:
-                    add_tri(grid, i2, e1, e3);
-                    add_tri(grid, i3, e4, e2);
-                    break;
+                case TopLeftBit | BottomRightBit:   add_tris(grid,  i1,e2,e1,  i4,e3,e4); break;
+                case TopRightBit | BottomLeftBit:   add_tris(grid,  i2,e1,e3,  i3,e4,e2); break;
 
                 // solid block
-                case 0x0F:
-                    add_tri(grid, i1, i3, i2);
-                    add_tri(grid, i2, i3, i4);
-                    break;
+                case 0x0F:  add_tris(grid,  i1,i3,i2,  i2,i3,i4); break;
             }
 
             // outlines
@@ -278,9 +252,13 @@ void remesh(VoxelGrid* grid) {
                 else if b1  ofs = p1;
                 else        ofs = 1.0 - p2;
 
+                vertex2D v = {};
+                v.pos = { x, y + ofs } - make_vec2(half);
+                v.uv = v.pos;
+                v.color = Green;
+
                 let i = g1_byteoffset + x * size + y;
-                grid.verts[i].pos.x = x - half;
-                grid.verts[i].pos.y = y + ofs - half;
+                grid.verts[i] = v;
             }
         }
 
@@ -298,9 +276,13 @@ void remesh(VoxelGrid* grid) {
                 else if b1  ofs = p1;
                 else        ofs = 1.0 - p2;
 
+                vertex2D v = {};
+                v.pos = { x + ofs, y } - make_vec2(half);
+                v.uv = v.pos;
+                v.color = Green;
+
                 let i = g2_byteoffset + x * grid.res + y;
-                grid.verts[i].pos.x = x + ofs - half;
-                grid.verts[i].pos.y = y - half;
+                grid.verts[i] = v;
             }
         }
     }
@@ -330,10 +312,11 @@ vec2 get_world_coords(VoxelGrid* grid, Transform2D tr, float32 x, y) {
     return local2world(tr, x - half, y - half);
 }
 
-void add_circle(with VoxelGrid* grid, with Transform2D transform, float32 radius, x, y) {
+void add_circle(with VoxelGrid* grid, with Transform2D tr, float32 radius, vec2 pos) add_circle(grid, tr, radius, pos.x, pos.y);
+void add_circle(with VoxelGrid* grid, with Transform2D tr, float32 radius, x, y) {
     grid.must_remesh = true;
 
-    let p = get_local_coords(grid, transform, x, y);
+    let p = get_local_coords(grid, tr, x, y);
     int32 rx = round(p.x) as int32;
     int32 ry = round(p.y) as int32;
 
@@ -357,10 +340,11 @@ void add_circle(with VoxelGrid* grid, with Transform2D transform, float32 radius
     }
 }
 
-void remove_circle(with VoxelGrid* grid, with Transform2D transform, float32 radius, x, y) {
+void remove_circle(with VoxelGrid* grid, with Transform2D tr, float32 radius, vec2 pos) remove_circle(grid, tr, radius, pos.x, pos.y);
+void remove_circle(with VoxelGrid* grid, with Transform2D tr, float32 radius, x, y) {
     grid.must_remesh = true;
 
-    let p = get_local_coords(grid, transform, x, y);
+    let p = get_local_coords(grid, tr, x, y);
     int32 rx = round(p.x) as int32;
     int32 ry = round(p.y) as int32;
 

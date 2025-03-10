@@ -5,15 +5,17 @@
     ..\plang\bin\plang.exe src\main.pog cflags -lglfw3dll -O0 -g -fsanitize=address -fno-omit-frame-pointer
 
     TODO:
-        - 2d noise function
-        - basic planet generation, using noise
-        - player controller (gravity, collision, jump, jetpack)
-        - player sprite
+        - player move and jump
+            - friction
+
+        - basic dirt texture on terrain
+        - bazooka
+        - grenade
+        - atmosphere
+        - clouds
 
     InProgress:
-        - point to voxelgrid intersection func
 
-    DONE:
 
 */
 
@@ -25,35 +27,18 @@ include "src/world.pog";
 Transform2D camera;
 
 float32 voxel_edit_radius = 0.5;
+
 DrawBuffers db_circle;
+DrawBuffers db_quad;
 
 Texture2D player_texture;
 Texture2D random_texture;
+Texture2D texture_cloud;
 
-// void apply_camera() {
-//     set_uniform("zoom", camera.scale);
-//     set_uniform("cam_pos", camera.pos);
-//     set_uniform("cam_rot", camera.rot);
-// }
-
-
-// void apply_transform(Transform2D t) {
-//     set_uniform("entity_pos", t.pos.x, t.pos.y, 0);
-//     set_uniform("entity_rot", t.rot);
-//     set_uniform("entity_scale", t.scale, t.scale);
-// }
-
-// void uniform_entity_pos(vec2 pos) set_uniform("entity_pos", pos.x, pos.y, 0);
-// void uniform_entity_rot(float32 rot) set_uniform("entity_rot", rot);
-// void uniform_entity_scale(float32 scale) set_uniform("entity_scale", scale, scale);
-
-
-void on_event(AppEvent event, AppEventData data) switch event {
-}
-
-void load() {
+void load_assets() {
 
     player_texture = load_texture2D("textures/player.bmp");
+    texture_cloud = load_texture2D("../shared_assets/cloud.bmp");
 
     { // genereate image
         const size = 64;
@@ -76,7 +61,7 @@ void load() {
                 let v = (g + 1.0) / 2.0 ;
 
                 uint8 c = (v * 255) as uint8;
-                image.pixels[x * size + y] = {c, c, c, 255};
+                image.pixels[x * size + y] = {v*82 , v*53 , v*25 , 255};
             }
         }
 
@@ -85,9 +70,8 @@ void load() {
         free(image.pixels);
     }
 
-    world_init();
-
     db_circle = genCircle(360, 1);
+    db_quad   = draw2d_renderer.quad_db;
 }
 
 void draw_circle(vec2 pos, float32 radius, vec4 color) {
@@ -95,11 +79,25 @@ void draw_circle(vec2 pos, float32 radius, vec4 color) {
     draw_texture(
         db_circle,
         tr,
-        -0.01,
+        0,
         white_texture,
         false,
         vec2_zero, vec2_one,
         color, vec4_zero);
+}
+
+void draw_quad(Transform2D tr, float32 depth, vec4 color) {
+    draw_texture(
+        db_quad,
+        tr,
+        depth,
+        white_texture,
+        false,
+        vec2_zero, vec2_one,
+        color, vec4_zero);
+}
+
+void on_event(AppEvent event, AppEventData data) switch event {
 }
 
 void main() {
@@ -108,7 +106,9 @@ void main() {
     grax_init();
     init_draw2d();
 
-    load();
+    load_assets();
+    world_init();
+
 
     glClearColor(0.05, 0.05, 0.05, 1.0);
     glLineWidth(10);
@@ -124,15 +124,10 @@ void main() {
             camera.scale = clamp(camera.scale, 1.0, 10000.0);
         }
 
-
-
-        use(*default2d_shader);
-        bind(white_texture);
-
         world_update();
 
         Transform2D tr = {};
-        tr.scale = 100;
+        tr.scale = (100);
         draw_texture(
             draw2d_renderer.quad_db,
             tr,
@@ -166,61 +161,62 @@ void main() {
             // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planet.grid.db.ebo);
 
             glBindVertexArray(0);
-
-            { // voxels
-                let mouse_coord = getMouseWorldCoord();
-
-                vec4 color = make_vec(1,1,1, 0.3);
-                Intersection2D inter = {};
-                if circle_intersects(*planet.grid, planet.tr, mouse_coord, voxel_edit_radius, *inter) {
-                    // print("Intersects ", inter.distance, "\n");
-                    color.y = 0;
-                    color.z = 0;
-                }
-
-                draw_circle(mouse_coord, voxel_edit_radius, color);
-
-                {
-                    let p = get_local_coords(*planet.grid, planet.tr, mouse_coord.x, mouse_coord.y);
-                    int32 ix = (p.x) as int32;
-                    int32 iy = (p.y) as int32;
-
-                    int32 ir = (voxel_edit_radius + 1) as int32;
-                    int32 y_min = iy - ir;
-                    int32 y_max = iy + ir;
-                    int32 x_min = ix - ir;
-                    int32 x_max = ix + ir;
-
-                    for y : y_min .. y_max+1
-                    for x : x_min .. x_max+1 {
-                        Transform2D tr = {};
-                        tr.scale = 1;
-                        tr.rot = planet.tr.rot;
-                        tr.pos = get_world_coords(*planet.grid, planet.tr, x + 0.5, y + 0.5);
-
-                        vec4 color = opacity(vec4_one, 0.1);
-                        if x == inter.cell.x and y == inter.cell.y {
-                            color.x = 0;
-                            color.y = 0;
-                        }
-
-                        draw_texture(
-                            draw2d_renderer.quad_db,
-                            tr,
-                            -0.01,
-                            white_texture,
-                            false,
-                            vec2_zero, vec2_one,
-                            color, vec4_zero);
-                    }
-                }
-
-                if mouse(Left_Mouse) {
-                    add_circle(*planet.grid, planet.tr, voxel_edit_radius, mouse_coord.x, mouse_coord.y);
-                } else if mouse(Right_Mouse) {
-                    remove_circle(*planet.grid, planet.tr, voxel_edit_radius, mouse_coord.x, mouse_coord.y);
-                }
-            }
         }
     }
 }
+
+void modify_terrain(Planet* planet) {
+    let mouse_coord = getMouseWorldCoord();
+
+    if mouse(Left_Mouse) {
+        add_circle(*planet.grid, planet.tr, voxel_edit_radius, mouse_coord.x, mouse_coord.y);
+    } else if mouse(Right_Mouse) {
+        remove_circle(*planet.grid, planet.tr, voxel_edit_radius, mouse_coord.x, mouse_coord.y);
+    }
+
+    vec4 color = make_vec(1,1,1, 0.3);
+    Intersection2D inter = {};
+    if circle_intersects(*planet.grid, planet.tr, mouse_coord, voxel_edit_radius, *inter) {
+        // print("Intersects ", inter.distance, "\n");
+        color.y = 0;
+        color.z = 0;
+    }
+
+    draw_circle(mouse_coord, voxel_edit_radius, color);
+
+    {
+        let p = get_local_coords(*planet.grid, planet.tr, mouse_coord.x, mouse_coord.y);
+        int32 ix = (p.x) as int32;
+        int32 iy = (p.y) as int32;
+
+        int32 ir = (voxel_edit_radius + 1) as int32;
+        int32 y_min = iy - ir;
+        int32 y_max = iy + ir;
+        int32 x_min = ix - ir;
+        int32 x_max = ix + ir;
+
+        for y : y_min .. y_max+1
+        for x : x_min .. x_max+1 {
+            Transform2D tr = {};
+            tr.scale = 1;
+            tr.rot = planet.tr.rot;
+            tr.pos = get_world_coords(*planet.grid, planet.tr, x + 0.5, y + 0.5);
+
+            vec4 color = opacity(vec4_one, 0.1);
+            if x == inter.cell.x and y == inter.cell.y {
+                color.x = 0;
+                color.y = 0;
+            }
+
+            draw_texture(
+                draw2d_renderer.quad_db,
+                tr,
+                -0.01,
+                white_texture,
+                false,
+                vec2_zero, vec2_one,
+                color, vec4_zero);
+        }
+    }
+}
+
