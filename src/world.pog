@@ -302,7 +302,7 @@ void draw_planet(Planet* planet) {
         random_texture,
         false,
         vec2_zero, vec2_one,
-        vec4_one, vec4_zero);
+        vec4_one, vec4_zero, vec4_zero);
 }
 
 Planet generate_planet(float32 radius, float32 dist) {
@@ -538,7 +538,7 @@ void world_update() {
             white_texture,
             false,
             vec2_zero, vec2_one,
-            vec4_one, vec4_zero);
+            vec4_one, vec4_zero, vec4_zero);
 
         p.life_time += dt;
 
@@ -559,7 +559,7 @@ void world_update() {
             e.tex,
             false,
             vec2_zero, vec2_one,
-            vec4_one, vec4_zero);
+            vec4_one, vec4_zero, vec4_zero);
     }
 
 
@@ -590,7 +590,7 @@ void draw_clouds(Planet* p) {
             tex,
             true,
             vec2_zero, vec2_one,
-            color, vec4_zero);
+            color, vec4_zero, vec4_zero);
     }
 }
 

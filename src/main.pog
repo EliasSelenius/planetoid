@@ -19,12 +19,15 @@
 
 */
 
+include "../plang/common/builtin/types.pog";
 
 include "../grax/grax.pog";
 include "src/voxels.pog";
 include "src/world.pog";
 
 Transform2D camera;
+
+RenderLayer static_ui;
 
 float32 voxel_edit_radius = 0.5;
 
@@ -38,7 +41,7 @@ Texture2D texture_cloud;
 void load_assets() {
 
     player_texture = load_texture2D("textures/player.bmp");
-    texture_cloud = load_texture2D("../shared_assets/cloud.bmp");
+    texture_cloud = white_texture; // load_texture2D("../shared_assets/cloud.bmp");
 
     { // genereate image
         const size = 64;
@@ -83,7 +86,7 @@ void draw_circle(vec2 pos, float32 radius, vec4 color) {
         white_texture,
         false,
         vec2_zero, vec2_one,
-        color, vec4_zero);
+        color, vec4_zero, vec4_zero);
 }
 
 void draw_quad(Transform2D tr, float32 depth, vec4 color) {
@@ -94,7 +97,7 @@ void draw_quad(Transform2D tr, float32 depth, vec4 color) {
         white_texture,
         false,
         vec2_zero, vec2_one,
-        color, vec4_zero);
+        color, vec4_zero, vec4_zero);
 }
 
 void on_event(AppEvent event, AppEventData data) switch event {
@@ -105,6 +108,9 @@ void main() {
     app.on_event = on_event;
     grax_init();
     init_draw2d();
+
+    static_ui = create_layer();
+    immediate_layer = *static_ui;
 
     load_assets();
     world_init();
@@ -135,7 +141,7 @@ void main() {
             white_texture,
             false,
             vec2_zero, vec2_one,
-            vec4_one, vec4_zero);
+            vec4_one, vec4_zero, vec4_zero);
 
         dispatch_sprites(camera);
 
@@ -162,7 +168,10 @@ void main() {
 
             glBindVertexArray(0);
         }
+
+        dispatch_layer(*static_ui, {scale=1} as Transform2D);
     }
+    
 }
 
 void modify_terrain(Planet* planet) {
@@ -215,7 +224,7 @@ void modify_terrain(Planet* planet) {
                 white_texture,
                 false,
                 vec2_zero, vec2_one,
-                color, vec4_zero);
+                color, vec4_zero, vec4_zero);
         }
     }
 }
