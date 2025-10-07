@@ -41,7 +41,7 @@ Texture2D texture_cloud;
 void load_assets() {
 
     player_texture = load_texture2D("textures/player.bmp");
-    texture_cloud = white_texture; // load_texture2D("../shared_assets/cloud.bmp");
+    texture_cloud = load_texture2D("../shared_assets/cloud.bmp");
 
     { // genereate image
         const size = 64;
@@ -171,7 +171,6 @@ void main() {
 
         dispatch_layer(*static_ui, {scale=1} as Transform2D);
     }
-    
 }
 
 void modify_terrain(Planet* planet) {

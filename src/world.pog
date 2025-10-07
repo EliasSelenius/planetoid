@@ -84,7 +84,8 @@ struct Particle {
 }
 
 Particle* spawn_particle(Particle p) {
-    list_add(*particles, *p);
+    Particle* res = list_add(*particles, *p);
+    return res;
 }
 
 Entity* spawn_entity(DrawBuffers db) {
@@ -408,6 +409,12 @@ void update_player() {
         if key_pressed(GLFW_KEY_SPACE) {
             player.vel = player.vel + up*7;
         }
+
+        let walk_dir = left * -Input.wasd.x;
+        walk_dir = noz(walk_dir + player.normal * -dot(walk_dir, player.normal))*10;
+
+        player.vel = player.vel + walk_dir * dt;
+        // player.tr.pos = player.tr.pos + walk_dir*dt;
     }
 
     if !key(GLFW_KEY_LEFT_CONTROL) {
@@ -436,8 +443,28 @@ void update_player() {
             }
 
         } break;
+
         case .Drill: if player.planet modify_terrain(player.planet); break;
-        case .Bazooka: break;
+
+        case .Bazooka: {
+            let mouse_coord = getMouseWorldCoord();
+            let diff = mouse_coord - player.tr.pos;
+            let dir = noz(diff);
+
+            if player.planet {
+                // TODO: starting pos and direction of ray must be transformed into local space of grid
+                Voxel2D_Traversal_State state = start_traversal(world2local(player.planet.tr, player.tr.pos), rotate_vec(dir, player.planet.tr.rot));
+                while true {
+                    traverse(*state);
+                    let d = dist(state);
+                    if d > 10 break;
+
+                    Transform2D tr = {pos=local2world(player.planet.tr, make_vec(state.coord)), scale=1};
+                    draw_quad(tr, 0, make_vec(1,1,1,0.1));
+                }
+            }
+
+        } break;
     }
 
     camera.pos = exp_decay(camera.pos, player.tr.pos, 10, dt);

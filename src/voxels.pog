@@ -545,12 +545,6 @@ bool point_intersects(VoxelGrid* grid, Transform2D tr, vec2 point, Intersection2
     return false;
 }
 
-vec2 closest_point_on_linesegment(vec2 a, b, p) {
-    let ab = b - a;
-    let t = clamp(dot(ab, p - a) / dot(ab, ab), 0, 1);
-    return lerp(t, a, b);
-}
-
 bool circle_intersects(VoxelGrid* grid, Transform2D tr, vec2 center, float32 radius, Intersection2D* inter) {
 
     @inter = {};
@@ -592,3 +586,37 @@ bool circle_intersects(VoxelGrid* grid, Transform2D tr, vec2 center, float32 rad
 
     return false;
 }
+
+
+
+
+struct Voxel2D_Traversal_State {
+    ivec2 coord, step;
+    vec2 delta, max;
+    uint32 index;
+}
+
+float32 dist(Voxel2D_Traversal_State ts) return min(ts.max.x, ts.max.y);
+
+Voxel2D_Traversal_State start_traversal(vec2 o, d) {
+    Voxel2D_Traversal_State state = {};
+    state.coord = make_ivec(round(o));
+    state.step = sign(d);
+    state.delta = make_vec(state.step) / d;
+    state.max = (make_vec(state.coord) + 0.5*make_vec(state.step) - o) / d;
+    state.index = 0;
+    return state;
+}
+
+void traverse(Voxel2D_Traversal_State* state) {
+    state.index++;
+
+    if state.max.x < state.max.y {
+        state.max.x += state.delta.x;
+        state.coord.x += state.step.x;
+    } else {
+        state.max.y += state.delta.y;
+        state.coord.y += state.step.y;
+    }
+}
+
