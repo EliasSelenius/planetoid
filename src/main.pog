@@ -12,12 +12,14 @@
         - bazooka
         - grenade
         - atmosphere
-        - clouds
+        
 
     InProgress:
 
-
 */
+
+bool is_congruent(int32 a, b, m) return a%m == b%m;
+
 
 include "../plang/common/builtin/types.pog";
 
@@ -216,14 +218,7 @@ void modify_terrain(Planet* planet) {
                 color.y = 0;
             }
 
-            draw_texture(
-                draw2d_renderer.quad_db,
-                tr,
-                -0.01,
-                white_texture,
-                false,
-                vec2_zero, vec2_one,
-                color, vec4_zero, vec4_zero);
+            draw_quad(tr, -0.01, color);
         }
     }
 }

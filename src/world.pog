@@ -19,6 +19,20 @@ struct Inventory {
     uint32[Item_Count] items;
 }
 
+struct Rigidbody2D {
+    vec2 vel;
+    float32 ang_vel;
+    float32 mass;
+    float32 cof; // coefficient of friction
+    float32 cod; // coefficient of drag
+    float32 cor; // coefficient of restitution
+}
+
+void apply_impulse(Rigidbody2D* rb, vec2 imp) rb.vel = rb.vel + imp / rb.mass;
+void apply_impulse(Entity* en, vec2 imp) apply_impulse(*en.rb, imp);
+
+const Drag_Coff_Of_Sphere = 0.47;
+
 enum Entity_Type {
     Other;
     Despawned;
@@ -36,9 +50,7 @@ struct Entity {
     Texture2D tex;
 
     Transform2D tr;
-    vec2 vel;
-    float32 ang_vel;
-    float32 cof; // coefficient of friction
+    Rigidbody2D rb;
 
     float32 life_time;
     float32 radius;
@@ -48,6 +60,7 @@ struct Entity {
     Inventory* inv;
     Item_Type selected_item;
 }
+
 
 bool is_inactive(Entity* en) return en.en_type == Entity_Type.Despawned or en.en_type == Entity_Type.Ready_For_Reuse;
 void despawn(Entity* en) en.en_type = .Despawned;
@@ -108,7 +121,10 @@ Entity* spawn_entity(DrawBuffers db) {
     @en = {};
     en.tr.scale = 1;
     en.db = db;
-    en.cof = 1;
+
+    en.rb.mass = 1;
+    en.rb.cof = 1;
+    en.rb.cod = Drag_Coff_Of_Sphere;
     return en;
 }
 
@@ -119,7 +135,7 @@ Entity* spawn_guy(vec2 pos) {
     en.tr.scale = (1.0 / en.tex.width);
     en.radius = 0.5;
     en.tr.pos = pos;
-    en.cof = 0.5;
+    en.rb.cof = 0.5;
     return en;
 }
 
@@ -151,7 +167,7 @@ Planet* get_planet_of_influence(vec2 pos) {
     return res;
 }
 
-void draw_trajectory(vec2 pos, vel) {
+void draw_trajectory(vec2 pos, vel, float32 mass, cod) {
     // let dt = deltatime();
     float32 dt = 1 / 60.0;
 
@@ -160,6 +176,12 @@ void draw_trajectory(vec2 pos, vel) {
 
         let p = get_planet_of_influence(pos);
         if p {
+
+            float32 fluid_density = 0.5;
+            float32 dragforce_mag = 0.5 * fluid_density * cod * sqlength(vel);
+            vec2    dragforce = neg(noz(vel)) * dragforce_mag;
+            vel = vel + (dragforce * dt) / mass;
+
             let down = noz(p.tr.pos - pos);
             vel = vel + down*9.8*dt;
         }
@@ -170,15 +192,32 @@ void draw_trajectory(vec2 pos, vel) {
 
 void update_entity(Entity* en) {
     let dt = deltatime();
-    en.tr.pos = en.tr.pos + en.vel * dt;
+    en.tr.pos = en.tr.pos + en.rb.vel * dt;
 
     en.planet = get_planet_of_influence(en.tr.pos);
 
     bool collided = false;
 
     if en.planet {
+        draw_circle(en.tr.pos, en.radius, make_vec(1,1,1, 0.3));
 
-        collided = check_collision(en.planet, en);
+
+        float32 fluid_density = 0.5;
+        float32 dragforce_mag = 0.5 * fluid_density * en.rb.cod * sqlength(en.rb.vel);
+        vec2    dragforce = neg(noz(en.rb.vel)) * dragforce_mag;
+        apply_impulse(en, dragforce * dt);
+
+
+
+        en.normal = vec2_zero;
+        Intersection2D inter = {};
+        if circle_intersects(*en.planet.grid, en.planet.tr, en.tr.pos, en.radius, *inter) {
+            en.normal = inter.surface_normal;
+            collision_response(*en.tr, *en.rb, inter);
+            collided = true;
+        }
+
+
 
         vec2 diff = en.planet.tr.pos - en.tr.pos;
         let sq_dist = sqlength(diff);
@@ -188,8 +227,9 @@ void update_entity(Entity* en) {
         float32 planet_mass = area; // assuming the same uniform mass-density on all planets.
         vec2 gravity = down * planet_mass / sq_dist;
         if sq_dist == 0.0 { gravity = vec2_zero; }
-        // en.vel = en.vel + gravity*dt;
-        en.vel = en.vel + down*9.8*dt;
+        // en.rb.vel = en.rb.vel + gravity*dt;
+        en.rb.vel = en.rb.vel + down*9.8*dt;
+
 
 
         float32 floor2multiple(float32 x, n) return floorf(x/n) * n;
@@ -229,44 +269,6 @@ void update_entity(Entity* en) {
     }
 
     en.life_time += dt;
-}
-
-bool check_collision(Planet* planet, Entity* en) {
-
-    draw_circle(en.tr.pos, en.radius, make_vec(1,1,1, 0.3));
-
-    en.normal = vec2_zero;
-
-    Intersection2D inter = {};
-    // if point_intersects(*planet.grid, planet.tr, en.tr.pos, *inter) {
-    if circle_intersects(*planet.grid, planet.tr, en.tr.pos, en.radius, *inter) {
-        en.normal = inter.surface_normal;
-
-        vec2 normal = inter.surface_normal;
-        vec2 correction = normal * -inter.distance;
-        en.tr.pos = en.tr.pos + correction;
-
-        // float32 bounce = 1;
-        // let ref = (reflect(en.vel, normal) - en.vel) * bounce;
-
-        let new_vel = en.vel + normal * -dot(en.vel, normal); // cancel velocity in direction of surface
-
-        let normal_force = -dot(en.vel, normal); // * en.mass;
-        let fric_dir = neg(noz(new_vel));
-        let fric = fric_dir * normal_force * en.cof;
-        en.vel = new_vel + fric; //  + ref;
-
-        return true;
-    }
-
-    return false;
-}
-
-struct Rigidbody2D {
-    vec2 vel;
-    float32 mass;
-    float32 cof; // coefficient of friction
-    float32 ang_vel;
 }
 
 void collision_response(Transform2D* tr, Rigidbody2D* rb, Intersection2D inter) {
@@ -375,15 +377,15 @@ void world_init() {
     player = spawn_guy(spawn_pos);
 }
 
-void update_player() {
+void update_player(Entity* en) {
     float32 dt = deltatime();
 
-    if key('F')  player.vel = {};
+    if key('F')  en.rb.vel = {};
 
-    player.tr.rot += input_axis('Q', 'E') * dt;
+    en.tr.rot += input_axis('Q', 'E') * dt;
 
-    float32 c = cosf(player.tr.rot);
-    float32 s = sinf(player.tr.rot);
+    float32 c = cosf(en.tr.rot);
+    float32 s = sinf(en.tr.rot);
     mat2 m = { c, s, -s, c };
     vec2 up = m * vec2_unit_y;
     vec2 left = rot90deg(up);
@@ -391,45 +393,50 @@ void update_player() {
     if Input.wasd.y > 0 {
 
         vec2 dir = up*9.8*1.3 - left*Input.wasd.x*5;
-        player.vel = player.vel + dir*dt;
+        en.rb.vel = en.rb.vel + dir*dt;
 
 
         Particle p = {};
-        p.tr.pos = player.tr.pos;
+        p.tr.pos = en.tr.pos;
         p.tr.scale = 0.3;
         p.tr.rot = random_range(-Pi, Pi);
-        p.vel = player.vel + neg(dir) + random_vec2(3);
+        p.vel = en.rb.vel + neg(dir) + random_vec2(3);
         p.ang_vel = random_range(-Pi, Pi) * 10;
         spawn_particle(p);
     }
 
 
-    if player.grounded {
+    if en.grounded {
 
         if key_pressed(GLFW_KEY_SPACE) {
-            player.vel = player.vel + up*7;
+            en.rb.vel = en.rb.vel + up*7;
         }
 
         let walk_dir = left * -Input.wasd.x;
-        walk_dir = noz(walk_dir + player.normal * -dot(walk_dir, player.normal))*10;
+        walk_dir = noz(walk_dir + en.normal * -dot(walk_dir, en.normal));
 
-        player.vel = player.vel + walk_dir * dt;
-        // player.tr.pos = player.tr.pos + walk_dir*dt;
+        draw_circle(en.tr.pos + walk_dir, 0.1, vec4_one);
+
+        en.rb.vel = en.rb.vel + walk_dir*10 * dt;
+
+        // TODO: try removing friction while walking (cof=0)
+        // if sqlength(walk_dir) > 0.1 
+
     }
 
     if !key(GLFW_KEY_LEFT_CONTROL) {
-        player.selected_item = ((player.selected_item + Input.mouse_scroll) as uint32) % Item_Count;
+        en.selected_item = ((en.selected_item + Input.mouse_scroll) as uint32) % Item_Count;
     }
 
-    draw_text(vec2_zero, 0.05, item_name(player.selected_item), White);
-    switch (player.selected_item) {
+    draw_text(vec2_zero, 0.05, item_name(en.selected_item), White);
+    switch (en.selected_item) {
         case .Grenade: {
             let mouse_coord = getMouseWorldCoord();
-            let diff = mouse_coord - player.tr.pos;
+            let diff = mouse_coord - en.tr.pos;
             let dir = noz(diff);
-            vec2 vel = player.vel + dir * 5 * clamp(length(diff)/2, 1, 3);
-            vec2 start_pos = player.tr.pos + dir*player.radius;
-            draw_trajectory(start_pos, vel);
+            vec2 vel = en.rb.vel + dir * 5 * clamp(length(diff)/2, 1, 3);
+            vec2 start_pos = en.tr.pos + dir*en.radius;
+            draw_trajectory(start_pos, vel, 1, Drag_Coff_Of_Sphere);
 
             if mouse_pressed(Left_Mouse) {
                 let g = spawn_entity(db_circle);
@@ -438,28 +445,28 @@ void update_player() {
                 g.radius = 0.1;
                 g.tr.scale = (g.radius);
                 g.tr.pos = start_pos;
-                g.vel = vel;
-                g.cof = 0.1;
+                g.rb.vel = vel;
+                g.rb.cof = 0.1;
             }
 
         } break;
 
-        case .Drill: if player.planet modify_terrain(player.planet); break;
+        case .Drill: if en.planet modify_terrain(en.planet); break;
 
         case .Bazooka: {
             let mouse_coord = getMouseWorldCoord();
-            let diff = mouse_coord - player.tr.pos;
+            let diff = mouse_coord - en.tr.pos;
             let dir = noz(diff);
 
-            if player.planet {
+            if en.planet {
                 // TODO: starting pos and direction of ray must be transformed into local space of grid
-                Voxel2D_Traversal_State state = start_traversal(world2local(player.planet.tr, player.tr.pos), rotate_vec(dir, player.planet.tr.rot));
+                Voxel2D_Traversal_State state = start_traversal(world2local(en.planet.tr, en.tr.pos), rotate_vec(dir, en.planet.tr.rot));
                 while true {
                     traverse(*state);
                     let d = dist(state);
                     if d > 10 break;
 
-                    Transform2D tr = {pos=local2world(player.planet.tr, make_vec(state.coord)), scale=1};
+                    Transform2D tr = {pos=local2world(en.planet.tr, make_vec(state.coord)), scale=1};
                     draw_quad(tr, 0, make_vec(1,1,1,0.1));
                 }
             }
@@ -467,10 +474,10 @@ void update_player() {
         } break;
     }
 
-    camera.pos = exp_decay(camera.pos, player.tr.pos, 10, dt);
-    camera.rot = exp_decay(camera.rot, player.tr.rot, 10, dt);
+    camera.pos = exp_decay(camera.pos, en.tr.pos, 10, dt);
+    camera.rot = exp_decay(camera.rot, en.tr.rot, 10, dt);
 
-    // draw_trajectory(player.tr.pos, player.vel);
+    // draw_trajectory(en.tr.pos, en.rb.vel);
 }
 
 void world_update() {
@@ -498,7 +505,7 @@ void world_update() {
     }
 
     if player {
-        update_player();
+        update_player(player);
     } else {
 
     }

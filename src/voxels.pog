@@ -312,13 +312,13 @@ vec2 get_world_coords(VoxelGrid* grid, Transform2D tr, float32 x, y) {
     return local2world(tr, x - half, y - half);
 }
 
-void add_circle(with VoxelGrid* grid, with Transform2D tr, float32 radius, vec2 pos) add_circle(grid, tr, radius, pos.x, pos.y);
-void add_circle(with VoxelGrid* grid, with Transform2D tr, float32 radius, x, y) {
+void add_circle(VoxelGrid* grid, Transform2D tr, float32 radius, vec2 pos) add_circle(grid, tr, radius, pos.x, pos.y);
+void add_circle(VoxelGrid* grid, Transform2D tr, float32 radius, x, y) {
     grid.must_remesh = true;
 
     let p = get_local_coords(grid, tr, x, y);
-    int32 rx = round(p.x) as int32;
-    int32 ry = round(p.y) as int32;
+    int32 rx = (p.x) as int32;
+    int32 ry = (p.y) as int32;
 
     int32 iradius = (radius + 1) as int32;
     int32 x_min = clamp(rx - iradius, 0, grid.res as int32);
@@ -327,8 +327,8 @@ void add_circle(with VoxelGrid* grid, with Transform2D tr, float32 radius, x, y)
     int32 y_max = clamp(ry + iradius, 0, grid.res as int32);
 
     // TODO: no +1 on max, see remove_circle
-    for ix : x_min .. x_max {
-        for iy : y_min .. y_max {
+    for ix: x_min+1 .. x_max+1 {
+        for iy: y_min+1 .. y_max+1 {
             float32 xf = ix as float32 - p.x;
             float32 yf = iy as float32 - p.y;
             float32 len = sqrtf(xf*xf + yf*yf);
@@ -336,17 +336,22 @@ void add_circle(with VoxelGrid* grid, with Transform2D tr, float32 radius, x, y)
             int32 i = ix * grid.res + iy;
             float32 addition = clamp(radius - len, 0, 1);
             if grid.data[i] < addition grid.data[i] = addition;
+
+
+            vec2 pos = get_world_coords(grid, tr, ix as float32, iy as float32);
+            vec4 color = {1,0.5,0.5,1};
+            draw_circle(pos, 0.05, color);
         }
     }
 }
 
-void remove_circle(with VoxelGrid* grid, with Transform2D tr, float32 radius, vec2 pos) remove_circle(grid, tr, radius, pos.x, pos.y);
-void remove_circle(with VoxelGrid* grid, with Transform2D tr, float32 radius, x, y) {
+void remove_circle(VoxelGrid* grid, Transform2D tr, float32 radius, vec2 pos) remove_circle(grid, tr, radius, pos.x, pos.y);
+void remove_circle(VoxelGrid* grid, Transform2D tr, float32 radius, x, y) {
     grid.must_remesh = true;
 
     let p = get_local_coords(grid, tr, x, y);
-    int32 rx = round(p.x) as int32;
-    int32 ry = round(p.y) as int32;
+    int32 rx = (p.x) as int32;
+    int32 ry = (p.y) as int32;
 
     int32 size = grid.res as int32 - 1;
     int32 iradius = (radius + 1) as int32;
@@ -355,8 +360,8 @@ void remove_circle(with VoxelGrid* grid, with Transform2D tr, float32 radius, x,
     int32 y_min = clamp(ry - iradius, 0, size);
     int32 y_max = clamp(ry + iradius, 0, size);
 
-    for ix : x_min .. x_max + 1 {
-        for iy : y_min .. y_max + 1 {
+    for ix: x_min .. x_max+2 {
+        for iy: y_min .. y_max+2 {
             float32 xf = ix as float32 - p.x;
             float32 yf = iy as float32 - p.y;
             float32 len = sqrtf(xf*xf + yf*yf);
@@ -364,6 +369,10 @@ void remove_circle(with VoxelGrid* grid, with Transform2D tr, float32 radius, x,
             int32 i = ix * grid.res + iy;
             float32 newValue = clamp(len - radius, 0, 1);
             if grid.data[i] > newValue grid.data[i] = newValue;
+
+            vec2 pos = get_world_coords(grid, tr, ix as float32, iy as float32);
+            vec4 color = {1,0.5,0.5,1};
+            draw_circle(pos, 0.05, color);
         }
     }
 }
