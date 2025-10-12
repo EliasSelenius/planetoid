@@ -326,7 +326,6 @@ void add_circle(VoxelGrid* grid, Transform2D tr, float32 radius, x, y) {
     int32 y_min = clamp(ry - iradius, 0, grid.res as int32);
     int32 y_max = clamp(ry + iradius, 0, grid.res as int32);
 
-    // TODO: no +1 on max, see remove_circle
     for ix: x_min+1 .. x_max+1 {
         for iy: y_min+1 .. y_max+1 {
             float32 xf = ix as float32 - p.x;
@@ -583,6 +582,7 @@ bool circle_intersects(VoxelGrid* grid, Transform2D tr, vec2 center, float32 rad
             draw_circle(get_world_coords(grid, tr, v + seg.end  ), 0.1, make_vec(0,1,0, 0.2));
             draw_circle(get_world_coords(grid, tr, p),             0.1, make_vec(0,1,1, 0.2));
 
+            // TODO: we should return intersection of linesegment with greatest distance
             if d <= 0 {
                 inter.distance = d;
                 inter.surface_normal = rotate_vec(normalize(rot90deg(seg.end - seg.start)), tr.rot);

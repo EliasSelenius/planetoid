@@ -23,15 +23,22 @@ struct Rigidbody2D {
     vec2 vel;
     float32 ang_vel;
     float32 mass;
-    float32 cof; // coefficient of friction
-    float32 cod; // coefficient of drag
-    float32 cor; // coefficient of restitution
+    float32 cof_s; // coefficient of static friction
+    float32 cof_k; // coefficient of kinetic friction
+    float32 cod;   // coefficient of drag
+    float32 cor;   // coefficient of restitution
 }
 
 void apply_impulse(Rigidbody2D* rb, vec2 imp) rb.vel = rb.vel + imp / rb.mass;
 void apply_impulse(Entity* en, vec2 imp) apply_impulse(*en.rb, imp);
 
 const Drag_Coff_Of_Sphere = 0.47;
+
+vec2 calc_dragforce(vec2 vel, float32 cod, fluid_density) {
+    float32 dragforce_mag = 0.5 * fluid_density * cod * sqlength(vel);
+    vec2    dragforce = neg(noz(vel)) * dragforce_mag;
+    return dragforce;
+}
 
 enum Entity_Type {
     Other;
@@ -123,7 +130,8 @@ Entity* spawn_entity(DrawBuffers db) {
     en.db = db;
 
     en.rb.mass = 1;
-    en.rb.cof = 1;
+    en.rb.cof_k = 1;
+    en.rb.cof_s = 1.2 * en.rb.cof_k;
     en.rb.cod = Drag_Coff_Of_Sphere;
     return en;
 }
@@ -135,7 +143,7 @@ Entity* spawn_guy(vec2 pos) {
     en.tr.scale = (1.0 / en.tex.width);
     en.radius = 0.5;
     en.tr.pos = pos;
-    en.rb.cof = 0.5;
+    en.rb.cof_k = 0.5;
     return en;
 }
 
@@ -178,8 +186,7 @@ void draw_trajectory(vec2 pos, vel, float32 mass, cod) {
         if p {
 
             float32 fluid_density = 0.5;
-            float32 dragforce_mag = 0.5 * fluid_density * cod * sqlength(vel);
-            vec2    dragforce = neg(noz(vel)) * dragforce_mag;
+            vec2 dragforce = calc_dragforce(vel, cod, fluid_density);
             vel = vel + (dragforce * dt) / mass;
 
             let down = noz(p.tr.pos - pos);
@@ -201,10 +208,8 @@ void update_entity(Entity* en) {
     if en.planet {
         draw_circle(en.tr.pos, en.radius, make_vec(1,1,1, 0.3));
 
-
         float32 fluid_density = 0.5;
-        float32 dragforce_mag = 0.5 * fluid_density * en.rb.cod * sqlength(en.rb.vel);
-        vec2    dragforce = neg(noz(en.rb.vel)) * dragforce_mag;
+        vec2 dragforce = calc_dragforce(en.rb.vel, en.rb.cod, fluid_density);
         apply_impulse(en, dragforce * dt);
 
 
@@ -276,16 +281,47 @@ void collision_response(Transform2D* tr, Rigidbody2D* rb, Intersection2D inter) 
     vec2 correction = normal * -inter.distance;
     tr.pos = tr.pos + correction;
 
-    // float32 bounce = 1;
-    // let ref = (reflect(rb.vel, normal) - rb.vel) * bounce;
+    // float32 dist = -inter.distance;
+    // float32 d = dot(normal, rb.vel);
+    // if d < 0.0 {
+    //     vec2 correction = rb.vel * dist / d;
+    //     tr.pos = tr.pos + correction;
+    // }
 
-    let new_vel = rb.vel + normal * -dot(rb.vel, normal); // cancel velocity in direction of surface
+    rb.vel = calc_new_vel(rb.vel, normal, rb.mass, rb.cor, rb.cof_s, rb.cof_k);
 
-    let normal_force = -dot(rb.vel, normal); // * rb.mass;
-    let fric_dir = neg(noz(new_vel));
-    let fric = fric_dir * normal_force * rb.cof;
-    rb.vel = new_vel + fric; //  + ref;
+    // // float32 bounce = 1;
+    // // let ref = (reflect(rb.vel, normal) - rb.vel) * bounce;
 
+    // let new_vel = rb.vel + normal * -dot(rb.vel, normal); // cancel velocity in direction of surface
+
+    // let normal_force = -dot(rb.vel, normal); // * rb.mass;
+    // let fric_dir = neg(noz(new_vel));
+    // let fric = fric_dir * normal_force * rb.cof;
+    // rb.vel = new_vel + fric; //  + ref;
+
+}
+
+vec2 calc_new_vel(vec2 vel, normal, float32 mass, e, cof_s, cof_k) {
+    float32 perp_speed = dot(vel, normal);
+    vec2 perp = normal * perp_speed; // perpendicular velocity
+    vec2 tang = vel - perp;          // tangential velocity
+
+    vec2 new_perp = normal * -e * perp_speed;
+
+    float32 tang_speed = length(tang);
+    if tang_speed < 0.000001  return new_perp;
+
+    float32 normal_impulse = mass * (1 + e) * abs(perp_speed);
+    float32 tangental_impulse = mass * tang_speed;
+
+    float32 static_friction  = cof_s * normal_impulse;
+    float32 dynamic_friction = cof_k * normal_impulse;
+
+    if tangental_impulse <= static_friction  return new_perp;
+
+    vec2 new_tang = noz(tang) * max(0, tang_speed - dynamic_friction / mass);
+    return new_tang + new_perp;
 }
 
 void draw_planet(Planet* planet) {
@@ -446,7 +482,8 @@ void update_player(Entity* en) {
                 g.tr.scale = (g.radius);
                 g.tr.pos = start_pos;
                 g.rb.vel = vel;
-                g.rb.cof = 0.1;
+                g.rb.cof_s = 1;
+                g.rb.cof_k = 0.1;
             }
 
         } break;
@@ -459,14 +496,34 @@ void update_player(Entity* en) {
             let dir = noz(diff);
 
             if en.planet {
-                // TODO: starting pos and direction of ray must be transformed into local space of grid
-                Voxel2D_Traversal_State state = start_traversal(world2local(en.planet.tr, en.tr.pos), rotate_vec(dir, en.planet.tr.rot));
+                let grid = *en.planet.grid;
+
+                vec2 o = get_local_coords(grid, en.planet.tr, en.tr.pos);
+                vec2 d = rotate_vec(dir, en.planet.tr.rot);
+                Voxel2D_Traversal_State state = start_traversal(o, d);
                 while true {
                     traverse(*state);
-                    let d = dist(state);
-                    if d > 10 break;
+                    let dist = dist(state);
+                    if dist > 50 break;
 
-                    Transform2D tr = {pos=local2world(en.planet.tr, make_vec(state.coord)), scale=1};
+                    Lineseg seg = {};
+                    if get_lineseg(grid, en.planet.tr, state.coord.x, state.coord.y, *seg) {
+                        vec2 pos = get_world_coords(grid, en.planet.tr, make_vec(state.coord) + seg.start);
+                        draw_circle(pos, 0.07, make_vec(0,1,0,1));
+
+                        pos = get_world_coords(grid, en.planet.tr, make_vec(state.coord) + seg.end);
+                        draw_circle(pos, 0.07, make_vec(0,1,1,1));
+                    }
+
+
+                    vec2 pos = get_world_coords(grid, en.planet.tr, o + d*dist)
+                    draw_circle(pos, 0.05, make_vec(0,0,1,0.7));
+
+                    Transform2D tr = {
+                        pos = get_world_coords(grid, en.planet.tr, make_vec(state.coord)),
+                        scale = 1
+                    };
+
                     draw_quad(tr, 0, make_vec(1,1,1,0.1));
                 }
             }
