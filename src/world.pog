@@ -289,17 +289,6 @@ void collision_response(Transform2D* tr, Rigidbody2D* rb, Intersection2D inter) 
     // }
 
     rb.vel = calc_new_vel(rb.vel, normal, rb.mass, rb.cor, rb.cof_s, rb.cof_k);
-
-    // // float32 bounce = 1;
-    // // let ref = (reflect(rb.vel, normal) - rb.vel) * bounce;
-
-    // let new_vel = rb.vel + normal * -dot(rb.vel, normal); // cancel velocity in direction of surface
-
-    // let normal_force = -dot(rb.vel, normal); // * rb.mass;
-    // let fric_dir = neg(noz(new_vel));
-    // let fric = fric_dir * normal_force * rb.cof;
-    // rb.vel = new_vel + fric; //  + ref;
-
 }
 
 vec2 calc_new_vel(vec2 vel, normal, float32 mass, e, cof_s, cof_k) {
@@ -655,6 +644,43 @@ void world_update() {
 
 
     cleanup_entity_pool();
+
+
+    Transform2D tr = {};
+    tr.scale = (100);
+    draw_texture(
+        draw2d_renderer.quad_db,
+        tr,
+        0,
+        white_texture,
+        false,
+        vec2_zero, vec2_one,
+        vec4_one, vec4_zero, vec4_zero);
+
+
+    let planet = player.planet;
+    if planet {
+        InstanceData data = {
+            pos = make_vec(planet.tr.pos, 0),
+            0,
+            vec2_one,
+            vec2_zero, vec2_one,
+            vec4_one, vec4_zero
+        };
+
+        set_instance_data(data);
+        glBindVertexArray(planet.grid.db.vao);
+
+        // draw grid
+        glDrawArrays(GL_POINTS, 0, planet.grid.numVerts as int32);
+
+        // draw outline
+        // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planet.grid.inds_outline_ebo);
+        // glDrawElements(GL_LINES, list_length(planet.grid.inds_outline), GL_UNSIGNED_INT, null);
+        // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planet.grid.db.ebo);
+
+        glBindVertexArray(0);
+    }
 }
 
 void draw_clouds(Planet* p) {

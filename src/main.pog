@@ -12,13 +12,19 @@
         - bazooka
         - grenade
         - atmosphere
-        
+
+        - galaxy map
+        - space ship
+        - select travel target for space ship
+        - travel uses fuel
+        -
 
     InProgress:
 
 */
 
-bool is_congruent(int32 a, b, m) return a%m == b%m;
+// bool is_congruent(int32 a, b, m) return a%m == b%m;
+// bool is_congruent(int32 a, b, m) return (a-b)%m == 0;
 
 
 include "../plang/common/builtin/types.pog";
@@ -39,6 +45,12 @@ DrawBuffers db_quad;
 Texture2D player_texture;
 Texture2D random_texture;
 Texture2D texture_cloud;
+
+GameView game_view = .World;
+enum GameView {
+    World;
+    Galaxy;
+}
 
 void load_assets() {
 
@@ -132,47 +144,19 @@ void main() {
             camera.scale = clamp(camera.scale, 1.0, 10000.0);
         }
 
-        world_update();
-
-        Transform2D tr = {};
-        tr.scale = (100);
-        draw_texture(
-            draw2d_renderer.quad_db,
-            tr,
-            0,
-            white_texture,
-            false,
-            vec2_zero, vec2_one,
-            vec4_one, vec4_zero, vec4_zero);
+        switch game_view {
+            case .World: world_update(); break;
+            case .Galaxy: galaxy_update(); break;
+        }
 
         dispatch_sprites(camera);
 
-        let planet = player.planet;
-        if planet {
-            InstanceData data = {
-                pos = make_vec(planet.tr.pos, 0),
-                0,
-                vec2_one,
-                vec2_zero, vec2_one,
-                vec4_one, vec4_zero
-            };
-
-            set_instance_data(data);
-            glBindVertexArray(planet.grid.db.vao);
-
-            // draw grid
-            glDrawArrays(GL_POINTS, 0, planet.grid.numVerts as int32);
-
-            // draw outline
-            // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planet.grid.inds_outline_ebo);
-            // glDrawElements(GL_LINES, list_length(planet.grid.inds_outline), GL_UNSIGNED_INT, null);
-            // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planet.grid.db.ebo);
-
-            glBindVertexArray(0);
-        }
-
         dispatch_layer(*static_ui, {scale=1} as Transform2D);
     }
+}
+
+void galaxy_update() {
+
 }
 
 void modify_terrain(Planet* planet) {
