@@ -144,6 +144,7 @@ Entity* spawn_guy(vec2 pos) {
     en.radius = 0.5;
     en.tr.pos = pos;
     en.rb.cof_k = 0.5;
+    en.rb.cof_s = 1.2 * en.rb.cof_k;
     return en;
 }
 
@@ -437,16 +438,17 @@ void update_player(Entity* en) {
             en.rb.vel = en.rb.vel + up*7;
         }
 
-        let walk_dir = left * -Input.wasd.x;
-        walk_dir = noz(walk_dir + en.normal * -dot(walk_dir, en.normal));
+        if Input.wasd.x != 0 {
+            let walk_dir = left * -Input.wasd.x;
+            walk_dir = noz(walk_dir + en.normal * -dot(walk_dir, en.normal));
 
-        draw_circle(en.tr.pos + walk_dir, 0.1, vec4_one);
+            draw_circle(en.tr.pos + walk_dir, 0.1, vec4_one);
 
-        en.rb.vel = en.rb.vel + walk_dir*10 * dt;
-
-        // TODO: try removing friction while walking (cof=0)
-        // if sqlength(walk_dir) > 0.1 
-
+            en.rb.vel = en.rb.vel + walk_dir*10 * dt;
+            en.rb.cof_s = 0;
+        } else {
+            en.rb.cof_s = 1.2 + en.rb.cof_k;
+        }
     }
 
     if !key(GLFW_KEY_LEFT_CONTROL) {
