@@ -1,5 +1,24 @@
 
 
+struct World {
+    Entity* entity_pool;
+    Particle[..] particles;
+
+    VoxelGrid[16] chunks;
+}
+
+World world_data;
+World* world = *world_data;
+
+World make_world() {
+    World w = {};
+    w.entity_pool = vmem_reserve(0xFFFF_FFFF);
+    w.particles = list_create(sizeof Particle);
+
+
+    return w;
+}
+
 const Item_Count = 3;
 enum Item_Type {
     Grenade;
@@ -54,7 +73,7 @@ struct Entity {
     Entity_Type en_type;
 
     DrawBuffers db;
-    Texture2D tex;
+    Texture2D* tex;
 
     Transform2D tr;
     Rigidbody2D rb;
@@ -139,7 +158,7 @@ Entity* spawn_entity(DrawBuffers db) {
 Entity* spawn_guy(vec2 pos) {
     let en = spawn_entity(db_quad);
     en.en_type = .Guy;
-    en.tex = player_texture;
+    en.tex = *player_texture;
     en.tr.scale = (1.0 / en.tex.width);
     en.radius = 0.5;
     en.tr.pos = pos;
@@ -328,7 +347,7 @@ void draw_planet(Planet* planet) {
         planet.grid.db,
         planet_tr,
         0,
-        random_texture,
+        *random_texture,
         false,
         vec2_zero, vec2_one,
         vec4_one, vec4_zero, vec4_zero);
@@ -405,6 +424,8 @@ void world_init() {
 
 void update_player(Entity* en) {
     float32 dt = deltatime();
+    let input = Input.wasd;
+
 
     if key('F')  en.rb.vel = {};
 
@@ -414,44 +435,60 @@ void update_player(Entity* en) {
     float32 s = sinf(en.tr.rot);
     mat2 m = { c, s, -s, c };
     vec2 up = m * vec2_unit_y;
-    vec2 left = rot90deg(up);
+    vec2 right = rot90deg_cw(up);
 
-    if Input.wasd.y > 0 {
+    if input.y > 0 {
 
-        vec2 dir = up*9.8*1.3 - left*Input.wasd.x*5;
-        en.rb.vel = en.rb.vel + dir*dt;
+        vec2 jetpack_acc = up*9.8*1.3; // + right*input.x*5;
+        en.rb.vel = en.rb.vel + jetpack_acc*dt;
 
 
         Particle p = {};
         p.tr.pos = en.tr.pos;
         p.tr.scale = 0.3;
         p.tr.rot = random_range(-Pi, Pi);
-        p.vel = en.rb.vel + neg(dir) + random_vec2(3);
+        p.vel = en.rb.vel + neg(jetpack_acc) + random_vec2(3);
         p.ang_vel = random_range(-Pi, Pi) * 10;
         spawn_particle(p);
     }
 
-
+    vec2 normal = up;
     if en.grounded {
-
-        if key_pressed(GLFW_KEY_SPACE) {
+        normal = en.normal;
+        if key_pressed(key_player_jump) {
             en.rb.vel = en.rb.vel + up*7;
-        }
-
-        if Input.wasd.x != 0 {
-            let walk_dir = left * -Input.wasd.x;
-            walk_dir = noz(walk_dir + en.normal * -dot(walk_dir, en.normal));
-
-            draw_circle(en.tr.pos + walk_dir, 0.1, vec4_one);
-
-            en.rb.vel = en.rb.vel + walk_dir*10 * dt;
-            en.rb.cof_s = 0;
-        } else {
-            en.rb.cof_s = 1.2 + en.rb.cof_k;
         }
     }
 
-    if !key(GLFW_KEY_LEFT_CONTROL) {
+    float32 max_speed = 5;
+    float32 acc_time  = 0.2;
+    float32 acceleration = max_speed / acc_time;
+
+    vec2 normal_vel = normal * dot(normal, en.rb.vel);
+    vec2 tangent_vel = en.rb.vel - normal_vel;
+
+    float32 steepness_factor = clamp01(dot(up, normal));
+
+    en.rb.cof_k = 1;
+    en.rb.cof_s = 1.2 * en.rb.cof_k;
+
+    if input.x != 0.0 {
+        en.rb.cof_k = 0.0;
+        en.rb.cof_s = 0.0;
+
+
+        let walk_dir = right * input.x;
+        walk_dir = noz(walk_dir + normal * -dot(walk_dir, normal));
+
+        draw_circle(en.tr.pos + walk_dir, 0.1, vec4_one);
+
+        vec2 target = walk_dir*max_speed;
+        tangent_vel = move(tangent_vel, target, steepness_factor*acceleration*dt);
+    }
+
+    en.rb.vel = normal_vel + tangent_vel;
+
+    if !key_down(Key.left_control) {
         en.selected_item = ((en.selected_item + Input.mouse_scroll) as uint32) % Item_Count;
     }
 
@@ -467,7 +504,7 @@ void update_player(Entity* en) {
 
             if mouse_pressed(Left_Mouse) {
                 let g = spawn_entity(db_circle);
-                g.tex = white_texture;
+                g.tex = *white_texture;
                 g.en_type = .Grenade;
                 g.radius = 0.1;
                 g.tr.scale = (g.radius);
@@ -507,7 +544,7 @@ void update_player(Entity* en) {
                     }
 
 
-                    vec2 pos = get_world_coords(grid, en.planet.tr, o + d*dist)
+                    vec2 pos = get_world_coords(grid, en.planet.tr, o + d*dist);
                     draw_circle(pos, 0.05, make_vec(0,0,1,0.7));
 
                     Transform2D tr = {
@@ -617,7 +654,7 @@ void world_update() {
             db_quad,
             p.tr,
             p.depth,
-            white_texture,
+            *white_texture,
             false,
             vec2_zero, vec2_one,
             vec4_one, vec4_zero, vec4_zero);
@@ -654,7 +691,7 @@ void world_update() {
         draw2d_renderer.quad_db,
         tr,
         0,
-        white_texture,
+        *white_texture,
         false,
         vec2_zero, vec2_one,
         vec4_one, vec4_zero, vec4_zero);
@@ -662,15 +699,21 @@ void world_update() {
 
     let planet = player.planet;
     if planet {
-        InstanceData data = {
-            pos = make_vec(planet.tr.pos, 0),
-            0,
-            vec2_one,
-            vec2_zero, vec2_one,
-            vec4_one, vec4_zero
+        Draw2D_Instance_Data data = {
+            pos            = make_vec(planet.tr.pos, 0),
+            rot            = 0,
+            scale          = vec2_one,
+            health         = 0,
+            padding0       = 0,
+            uv_offset      = vec2_zero,
+            uv_scale       = vec2_one,
+            color_factor   = vec4_one,
+            color_additive = vec4_zero,
+            color_outline  = vec4_zero
         };
 
-        set_instance_data(data);
+        update_ssbo("Instances2D", *data, sizeof Draw2D_Instance_Data);
+
         glBindVertexArray(planet.grid.db.vao);
 
         // draw grid
@@ -694,7 +737,7 @@ void draw_clouds(Planet* p) {
     for 0 .. num_clouds {
         float32 angle = it / (num_clouds as float32) * Tau;
 
-        let tex = texture_cloud; // white_texture;
+        let tex = *texture_cloud; // white_texture;
 
         Transform2D tr = {};
         tr.scale = 20.0 / tex.width;
@@ -770,8 +813,6 @@ DrawBuffers genCircle(int32 res, float32 radius) {
     update_buffers(*db, verts, vertsCount, inds, indsCount);
     free(verts);
     free(inds);
-
-    bind_instance_buffer_to_vao(db.vao, draw2d_renderer.vbo_instances);
 
     return db;
 }

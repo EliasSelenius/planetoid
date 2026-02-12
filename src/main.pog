@@ -3,6 +3,7 @@
 
     ..\plang\bin\plang.exe src\main.pog cflags -lglfw3dll
     ..\plang\bin\plang.exe src\main.pog cflags -lglfw3dll -O0 -g -fsanitize=address -fno-omit-frame-pointer
+    ..\plang\bin\plang.exe src\main.pog cflags -lglfw3dll -O0 -g
 
     TODO:
         - player move and jump
@@ -17,7 +18,9 @@
         - space ship
         - select travel target for space ship
         - travel uses fuel
-        -
+
+        - chunk system
+        - apply different textures to terrain using bindless textures
 
     InProgress:
 
@@ -51,6 +54,8 @@ enum GameView {
     World;
     Galaxy;
 }
+
+Key key_player_jump = .space;
 
 void load_assets() {
 
@@ -97,7 +102,7 @@ void draw_circle(vec2 pos, float32 radius, vec4 color) {
         db_circle,
         tr,
         0,
-        white_texture,
+        *white_texture,
         false,
         vec2_zero, vec2_one,
         color, vec4_zero, vec4_zero);
@@ -108,14 +113,16 @@ void draw_quad(Transform2D tr, float32 depth, vec4 color) {
         db_quad,
         tr,
         depth,
-        white_texture,
+        *white_texture,
         false,
         vec2_zero, vec2_one,
         color, vec4_zero, vec4_zero);
 }
 
-void on_event(AppEvent event, AppEventData data) switch event {
+void on_event(AppEvent event) switch event.kind {
 }
+
+
 
 void main() {
 

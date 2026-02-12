@@ -83,7 +83,6 @@ VoxelGrid createVoxelGrid(uint32 res) {
     grid.inds_outline = list_create(sizeof uint32);
 
     grid.db = create_draw_buffers(sizeof vertex2D, vertex2D_attribs);
-    bind_instance_buffer_to_vao(grid.db.vao, draw2d_renderer.vbo_instances);
 
     glGenBuffers(1, *grid.inds_outline_ebo);
 
@@ -297,7 +296,7 @@ void remesh(VoxelGrid* grid) {
 
     uint32 ind_count = list_length(grid.inds);
     update_buffers(*grid.db, grid.verts, grid.numVerts, grid.inds as uint32*, ind_count);
-    update_buffer(grid.inds_outline_ebo, list_length(grid.inds_outline) * sizeof uint32 as uint32, grid.inds_outline);
+    update_buffer(grid.inds_outline_ebo, grid.inds_outline);
 }
 
 vec2 get_local_coords(VoxelGrid* grid, Transform2D tr, vec2 pos) return get_local_coords(grid, tr, pos.x, pos.y);

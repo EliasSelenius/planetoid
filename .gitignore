@@ -17,6 +17,8 @@ output.pdb
 output.lib
 output.raddbg
 output.rdi
+output.ilk
+
 
 *.exe
 shader_debug_log_*.txt
