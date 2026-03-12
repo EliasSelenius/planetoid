@@ -130,108 +130,107 @@ void remesh(VoxelGrid* grid) {
     list_clear(grid.inds_outline);
 
     uint32 size = grid.res - 1;
-    uint32 g1_byteoffset = grid.res * grid.res;
-    uint32 g2_byteoffset = g1_byteoffset + grid.res * size;
+    uint32 g1_start_index = grid.res * grid.res;
+    uint32 g2_start_index = g1_start_index + grid.res * size;
 
-    for uint32 x : 0 .. size {
-        for uint32 y : 0 .. size {
+    /*
+        i1--------e1--------i2
+        |                   |
+        |                   |
+        |                   |
+        e2                  e3
+        |                   |
+        |                   |
+        |                   |
+        i3--------e4--------i4
+    */
 
-            /*
-               i1--------e1--------i2
-                |                  |
-                |                  |
-                |                  |
-                e2                 e3
-                |                  |
-                |                  |
-                |                  |
-               i3--------e4--------i4
-            */
+    for uint32 x : 0 .. size  for uint32 y : 0 .. size {
 
-            uint32 e2 = g1_byteoffset + x * size + y;
-            uint32 e3 = g1_byteoffset + (x + 1) * size + y;
-            uint32 e1 = g2_byteoffset + x * grid.res + (y + 1);
-            uint32 e4 = g2_byteoffset + x * grid.res + y;
+        uint32 e2 = g1_start_index + x * size + y;
+        uint32 e3 = g1_start_index + (x + 1) * size + y;
+        uint32 e1 = g2_start_index + x * grid.res + (y + 1);
+        uint32 e4 = g2_start_index + x * grid.res + y;
 
-            uint32 i1 = get_index(grid.res, x, y + 1);
-            uint32 i2 = get_index(grid.res, x + 1, y + 1);
-            uint32 i3 = get_index(grid.res, x, y);
-            uint32 i4 = get_index(grid.res, x + 1, y);
+        uint32 i1 = get_index(grid.res, x, y + 1);
+        uint32 i2 = get_index(grid.res, x + 1, y + 1);
+        uint32 i3 = get_index(grid.res, x, y);
+        uint32 i4 = get_index(grid.res, x + 1, y);
 
-            let p1 = grid.data[i1];
-            let p2 = grid.data[i2];
-            let p3 = grid.data[i3];
-            let p4 = grid.data[i4];
+        let p1 = grid.data[i1];
+        let p2 = grid.data[i2];
+        let p3 = grid.data[i3];
+        let p4 = grid.data[i4];
 
-            uint8 mask = get_mask(p1, p2, p3, p4);
+        uint8 mask = get_mask(p1, p2, p3, p4);
 
-            switch (mask) {
+        switch (mask) {
 
-                // corners
-                case TopLeftBit:     add_tri(grid, i1, e2, e1); break;
-                case TopRightBit:    add_tri(grid, i2, e1, e3); break;
-                case BottomRightBit: add_tri(grid, i4, e3, e4); break;
-                case BottomLeftBit:  add_tri(grid, i3, e4, e2); break;
+            // corners
+            case TopLeftBit:     add_tri(grid, i1, e2, e1); break;
+            case TopRightBit:    add_tri(grid, i2, e1, e3); break;
+            case BottomRightBit: add_tri(grid, i4, e3, e4); break;
+            case BottomLeftBit:  add_tri(grid, i3, e4, e2); break;
 
-                // inverted corners
-                case 0x0F & ~TopLeftBit:     add_tris(grid, i4,e1,e2,  i4,i2,e1,  i4,e2,i3); break;
-                case 0x0F & ~TopRightBit:    add_tris(grid, i3,e3,e1,  i3,i4,e3,  i3,e1,i1); break;
-                case 0x0F & ~BottomRightBit: add_tris(grid, i1,e4,e3,  i1,e3,i2,  i1,i3,e4); break;
-                case 0x0F & ~BottomLeftBit:  add_tris(grid, i2,e2,e4,  i2,i1,e2,  i2,e4,i4); break;
+            // inverted corners
+            case 0x0F & ~TopLeftBit:     add_tris(grid, i4,e1,e2,  i4,i2,e1,  i4,e2,i3); break;
+            case 0x0F & ~TopRightBit:    add_tris(grid, i3,e3,e1,  i3,i4,e3,  i3,e1,i1); break;
+            case 0x0F & ~BottomRightBit: add_tris(grid, i1,e4,e3,  i1,e3,i2,  i1,i3,e4); break;
+            case 0x0F & ~BottomLeftBit:  add_tris(grid, i2,e2,e4,  i2,i1,e2,  i2,e4,i4); break;
 
-                // horizontal 'walls'
-                case TopLeftBit | TopRightBit:       add_tris(grid, i1,e2,i2,  i2,e2,e3); break;
-                case BottomLeftBit | BottomRightBit: add_tris(grid, i3,e3,e2,  i4,e3,i3); break;
-                // vertical 'walls'
-                case TopLeftBit | BottomLeftBit:     add_tris(grid, i1,i3,e1,  i3,e4,e1); break;
-                case TopRightBit | BottomRightBit:   add_tris(grid, i2,e1,i4,  i4,e1,e4); break;
+            // horizontal 'walls'
+            case TopLeftBit | TopRightBit:       add_tris(grid, i1,e2,i2,  i2,e2,e3); break;
+            case BottomLeftBit | BottomRightBit: add_tris(grid, i3,e3,e2,  i4,e3,i3); break;
+            // vertical 'walls'
+            case TopLeftBit | BottomLeftBit:     add_tris(grid, i1,i3,e1,  i3,e4,e1); break;
+            case TopRightBit | BottomRightBit:   add_tris(grid, i2,e1,i4,  i4,e1,e4); break;
 
-                // diagonals
-                case TopLeftBit | BottomRightBit:   add_tris(grid,  i1,e2,e1,  i4,e3,e4); break;
-                case TopRightBit | BottomLeftBit:   add_tris(grid,  i2,e1,e3,  i3,e4,e2); break;
+            // diagonals
+            case TopLeftBit | BottomRightBit:   add_tris(grid,  i1,e2,e1,  i4,e3,e4); break;
+            case TopRightBit | BottomLeftBit:   add_tris(grid,  i2,e1,e3,  i3,e4,e2); break;
 
-                // solid block
-                case 0x0F:  add_tris(grid,  i1,i3,i2,  i2,i3,i4); break;
-            }
+            // solid block
+            case 0x0F:  add_tris(grid,  i1,i3,i2,  i2,i3,i4); break;
+        }
 
-            // outlines
-            switch (mask) {
+        // outlines
+        switch (mask) {
 
-                // corners
-                case TopLeftBit: add_outline(grid, e2, e1); break;
-                case TopRightBit: add_outline(grid, e1, e3); break;
-                case BottomRightBit: add_outline(grid, e3, e4); break;
-                case BottomLeftBit: add_outline(grid, e4, e2); break;
+            // corners
+            case TopLeftBit: add_outline(grid, e2, e1); break;
+            case TopRightBit: add_outline(grid, e1, e3); break;
+            case BottomRightBit: add_outline(grid, e3, e4); break;
+            case BottomLeftBit: add_outline(grid, e4, e2); break;
 
-                // inverted corners
-                case 0x0F & ~TopLeftBit: add_outline(grid, e1, e2); break;
-                case 0x0F & ~TopRightBit: add_outline(grid, e3, e1); break;
-                case 0x0F & ~BottomRightBit: add_outline(grid, e3, e4); break;
-                case 0x0F & ~BottomLeftBit: add_outline(grid, e2, e4); break;
+            // inverted corners
+            case 0x0F & ~TopLeftBit: add_outline(grid, e1, e2); break;
+            case 0x0F & ~TopRightBit: add_outline(grid, e3, e1); break;
+            case 0x0F & ~BottomRightBit: add_outline(grid, e3, e4); break;
+            case 0x0F & ~BottomLeftBit: add_outline(grid, e2, e4); break;
 
-                // horizontal 'walls'
-                case TopLeftBit | TopRightBit:
-                case BottomLeftBit | BottomRightBit: add_outline(grid, e3, e2); break;
+            // horizontal 'walls'
+            case TopLeftBit | TopRightBit:
+            case BottomLeftBit | BottomRightBit: add_outline(grid, e3, e2); break;
 
-                // vertical 'walls'
-                case TopLeftBit | BottomLeftBit:
-                case TopRightBit | BottomRightBit: add_outline(grid, e1, e4); break;
+            // vertical 'walls'
+            case TopLeftBit | BottomLeftBit:
+            case TopRightBit | BottomRightBit: add_outline(grid, e1, e4); break;
 
-                // diagonals
-                case TopLeftBit | BottomRightBit:
-                    add_outline(grid, e2, e1);
-                    add_outline(grid, e3, e4);
-                    break;
-                case TopRightBit | BottomLeftBit:
-                    add_outline(grid, e1, e3);
-                    add_outline(grid, e4, e2);
-                    break;
+            // diagonals
+            case TopLeftBit | BottomRightBit:
+                add_outline(grid, e2, e1);
+                add_outline(grid, e3, e4);
+                break;
+            case TopRightBit | BottomLeftBit:
+                add_outline(grid, e1, e3);
+                add_outline(grid, e4, e2);
+                break;
 
-                // solid block
-                case 0x0F: break;
-            }
+            // solid block
+            case 0x0F: break;
         }
     }
+
 
     if true { // smoothing
 
@@ -256,7 +255,7 @@ void remesh(VoxelGrid* grid) {
                 v.uv = v.pos;
                 v.color = Green;
 
-                let i = g1_byteoffset + x * size + y;
+                let i = g1_start_index + x * size + y;
                 grid.verts[i] = v;
             }
         }
@@ -280,7 +279,7 @@ void remesh(VoxelGrid* grid) {
                 v.uv = v.pos;
                 v.color = Green;
 
-                let i = g2_byteoffset + x * grid.res + y;
+                let i = g2_start_index + x * grid.res + y;
                 grid.verts[i] = v;
             }
         }
@@ -408,20 +407,11 @@ struct Ray {
     vec2 origin, dir;
 }
 
-int32 ray_lineseg_intersects(Ray ray, Lineseg seg, Intersection2D* out_intersection) {
-    let A = sub(seg.start, ray.origin);
-    let B = sub(seg.end, ray.origin);
-
-    let tangent = rot90deg(ray.dir);
-
-    let d1 = dot(A, tangent);
-    let d2 = dot(B, tangent);
-
-    // if d1 & 0x80000000 == d2 & 0x80000000 {
-    //     return true;
-    // }
-
-    return false;
+struct Cell {
+    float32[4] voxel_data;
+    ivec2 coord;
+    Lineseg seg;
+    uint8 mask;
 }
 
 bool get_lineseg(VoxelGrid* grid, Transform2D tr, int32 ix, iy, Lineseg* seg) {
@@ -447,12 +437,12 @@ bool get_lineseg(VoxelGrid* grid, Transform2D tr, int32 ix, iy, Lineseg* seg) {
     uint8 mask = get_mask(p1, p2, p3, p4);
 
     // let size = grid.res - 1;
-    // let g1_byteoffset = grid.res * grid.res;
-    // let g2_byteoffset = g1_byteoffset + grid.res * size;
-    // let e2 = g1_byteoffset + x * size + y;
-    // let e3 = g1_byteoffset + (x + 1) * size + y;
-    // let e1 = g2_byteoffset + x * grid.res + (y + 1);
-    // let e4 = g2_byteoffset + x * grid.res + y;
+    // let g1_start_index = grid.res * grid.res;
+    // let g2_start_index = g1_start_index + grid.res * size;
+    // let e2 = g1_start_index + x * size + y;
+    // let e3 = g1_start_index + (x + 1) * size + y;
+    // let e1 = g2_start_index + x * grid.res + (y + 1);
+    // let e4 = g2_start_index + x * grid.res + y;
 
     vec2 a = {};
     vec2 b = {};

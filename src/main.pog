@@ -156,9 +156,31 @@ void main() {
             case .Galaxy: galaxy_update(); break;
         }
 
+        draw_grid({scale=1} as Transform2D, getMouseWorldCoord(), make_vec(1,1,1,0.5));
+
+        if player.planet  draw_grid(player.planet.tr, getMouseWorldCoord(), make_vec(0,1,0,0.5));
+
         dispatch_sprites(camera);
 
         dispatch_layer(*static_ui, {scale=1} as Transform2D);
+    }
+}
+
+void draw_grid(Transform2D tr, vec2 pos, vec4 color) {
+    pos = world2local(tr, pos);
+    vec2 center = round(pos);
+
+
+    int32 r = 6;
+    for y: -r .. r+1  for x: -r .. r+1 {
+        vec2 c = center + {x, y};
+
+        float32 d = 1.0 - clamp01(dist(c, pos) / (r as float32));
+
+        vec4 col = color;
+        col.w *= d;
+
+        draw_circle(local2world(tr, c), 0.02, col);
     }
 }
 
