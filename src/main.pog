@@ -48,6 +48,17 @@ DrawBuffers db_quad;
 Texture2D player_texture;
 Texture2D random_texture;
 Texture2D texture_cloud;
+Texture2D texture_assrifle;
+
+Draw2D_Batch drawbatch_planets;
+
+DrawMode drawmode_default2d = {
+    depth_test  = DepthTest.Less_Equal,
+    blend       = Blend.Overwrite,
+    front_face  = Poly.Fill,
+    back_face   = Poly.Cull,
+    depth_write = true
+};
 
 GameView game_view = .World;
 enum GameView {
@@ -59,8 +70,9 @@ Key key_player_jump = .space;
 
 void load_assets() {
 
-    player_texture = load_texture2D("textures/player.bmp");
-    texture_cloud = load_texture2D("../shared_assets/cloud.bmp");
+    player_texture   = load_texture2D("textures/player.bmp");
+    texture_cloud    = load_texture2D("../shared_assets/cloud.bmp");
+    texture_assrifle = load_texture2D("textures/assrifle.bmp");
 
     { // genereate image
         const size = 64;
@@ -96,12 +108,13 @@ void load_assets() {
     db_quad   = draw2d_renderer.quad_db;
 }
 
-void draw_circle(vec2 pos, float32 radius, vec4 color) {
+void draw_circle(vec2 pos, float32 radius, vec4 color) draw_circle(pos, radius, 0, color);
+void draw_circle(vec2 pos, float32 radius, depth, vec4 color) {
     Transform2D tr = { pos = pos, scale = radius };
     draw_texture(
         db_circle,
         tr,
-        0,
+        depth,
         *white_texture,
         false,
         vec2_zero, vec2_one,
@@ -142,6 +155,10 @@ void main() {
 
     while grax_loop() {
 
+        if key_pressed('R') {
+            shader_reload(*default2d_shader);
+        }
+
         let s = mouse_scroll as float32;
         if key(GLFW_KEY_LEFT_CONTROL) {
             voxel_edit_radius += s * 0.1;
@@ -158,8 +175,11 @@ void main() {
 
         draw_grid({scale=1} as Transform2D, getMouseWorldCoord(), make_vec(1,1,1,0.5));
 
-        if player.planet  draw_grid(player.planet.tr, getMouseWorldCoord(), make_vec(0,1,0,0.5));
+        if player and player.planet  draw_grid(player.planet.tr, getMouseWorldCoord(), make_vec(0,1,0,0.5));
 
+        use(*default2d_shader);
+        set_mode(drawmode_default2d);
+        dispatch_sprites(*drawbatch_planets, camera);
         dispatch_sprites(camera);
 
         dispatch_layer(*static_ui, {scale=1} as Transform2D);

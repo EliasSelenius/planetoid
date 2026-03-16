@@ -339,18 +339,20 @@ void draw_planet(Planet* planet) {
         remesh(*planet.grid);
     }
 
-    draw_circle(planet.tr.pos, planet.radius*2, make_vec(1,1,1, 0.1));
+    draw_circle(planet.tr.pos, planet.radius*2, 0.0001, make_vec(1,1,1, 0.1));
 
-    Transform2D planet_tr = planet.tr;
-    planet_tr.scale = (1.0 / random_texture.width);
-    draw_texture(
-        planet.grid.db,
-        planet_tr,
-        0,
-        *random_texture,
-        false,
-        vec2_zero, vec2_one,
-        vec4_one, vec4_zero, vec4_zero);
+    Draw2D_Instance_Data data = {};
+    data.pos = make_vec(planet.tr.pos, 0);
+    data.rot = planet.tr.rot;
+    data.scale = vec2_one;
+    data.health = 1.0;
+    data.uv_offset = vec2_zero;
+    data.uv_scale  = vec2_one;
+    data.color_factor = vec4_one;
+    data.color_additive = vec4_zero;
+    data.color_outline = vec4_zero;
+
+    draw_texture(*drawbatch_planets, planet.grid.db, random_texture.gl_handle, data);
 }
 
 Planet generate_planet(float32 radius, float32 dist) {
@@ -367,6 +369,25 @@ Planet generate_planet(float32 radius, float32 dist) {
 }
 
 VoxelGrid generate_planet_grid(Planet* planet) {
+
+    float32 fbm(vec2 p) {
+
+        float32 value = 0.0;
+        float32 max_value = 0.0;
+
+        uint32 octaves = 2;
+        for 0 .. octaves {
+
+            float32 amp = pow(2, it);
+            float32 wavelen = amp;
+
+            value += gnoise(p * wavelen) * amp;
+            max_value += amp;
+        }
+
+        return value / max_value;
+    }
+
     const radius2gridsize_ratio = 2.5;
     uint32 grid_size = (planet.radius * radius2gridsize_ratio) as uint32;
     // if grid_size % 2 == 0   grid_size++;
@@ -374,29 +395,26 @@ VoxelGrid generate_planet_grid(Planet* planet) {
 
     float32 half = grid.res as float32 / 2;
 
-    for uint32 x : 0 .. grid.res {
-        for uint32 y : 0 .. grid.res {
-            float32 xf = x as float32 - half;
-            float32 yf = y as float32 - half;
-            float32 len = sqrtf(xf*xf + yf*yf);
-            const scale = 4.0;
-            float32 offset = planet.orbit_dist;
+    for uint32 ux : 0 .. grid.res   for uint32 uy : 0 .. grid.res {
 
-            float32 f = 1.0 / len * scale;
-            if len == 0.0  f = 0;
+        float32 xf = ux as float32 - half;
+        float32 yf = uy as float32 - half;
 
-            let h = (gnoise(offset + xf * f, offset + yf * f) + 1.0) / 2.0;
-            h *= planet.radius / 3.0;
-            h = planet.radius - h;
+        vec2 p = make_vec(xf, yf);
+        float32 len_p = length(p);
 
-            uint32 i = get_index(grid.res, x, y);
-            grid.data[i] = clamp(h - len, 0, 1);
+        const scale = 4.0;
+        float32 offset = planet.orbit_dist;
 
-            // grid.data[i] = clamp(40 - len, 0, 1);
+        float32 f = 1.0 / len_p * scale;
+        if len_p == 0.0  f = 0;
 
-            // if len < 40 grid.data[i] = clamp(random(i as int32), 0, 1);
-            // else grid.data[i] = 0;
-        }
+        float32 h = (fbm(p * f + make_vec2(offset)) + 1.0) / 2.0;
+        h *= planet.radius / 3.0;
+        h = planet.radius - h;
+
+        uint32 i = get_index(grid.res, ux, uy);
+        grid.data[i] = clamp(h - len_p, 0, 1);
     }
 
     remesh(*grid);
@@ -520,7 +538,20 @@ void update_player(Entity* en) {
 
         } break;
 
-        case .Drill: if en.planet modify_terrain(en.planet); break;
+        case .Drill: {
+            if en.planet {
+                let mouse_coord = getMouseWorldCoord();
+                let diff = mouse_coord - en.tr.pos;
+                let dir = noz(diff);
+                Raycast_Result hit = raycast(en.planet, en.tr.pos, dir);
+
+                if mouse_pressed(MouseButton.Left) {
+                    remove_circle(*en.planet.grid, en.planet.tr, 1, hit.hit_point);
+                }
+
+                // modify_terrain(en.planet);
+            }
+        } break;
 
         case .Bazooka: {
             if en.planet {
@@ -538,7 +569,12 @@ void update_player(Entity* en) {
     // draw_trajectory(en.tr.pos, en.rb.vel);
 }
 
-void raycast(Planet* planet, vec2 origin, direction) {
+struct Raycast_Result {
+    vec2 hit_point;
+    float32 distance;
+}
+
+Raycast_Result raycast(Planet* planet, vec2 origin, direction) {
     let grid = *planet.grid;
 
     vec2 half2 = make_vec2(0.5);
@@ -547,7 +583,6 @@ void raycast(Planet* planet, vec2 origin, direction) {
     vec2 d = rotate_vec(direction, planet.tr.rot);
     Voxel2D_Traversal_State state = start_traversal(o - half2, d);
     while true {
-        traverse(*state);
         let dist = dist(state);
         if dist > 50 break;
 
@@ -568,10 +603,14 @@ void raycast(Planet* planet, vec2 origin, direction) {
             draw_circle(B, 0.07, make_vec(0,1,1,1));
 
             float32 dist_to_seg;
-            if ray_lineseg_intersection(origin, direction,  A, B, *dist_to_seg) {
-                vec2 hit_point = origin + direction * dist_to_seg;
+            if ray_lineseg_intersection(o, d,  lA, lB, *dist_to_seg) {
+                // vec2 hit_point = origin + direction * dist_to_seg;
+                vec2 hit_point = get_world_coords(grid, planet.tr, o + d * dist_to_seg);
 
-                draw_circle(hit_point, (sin(app.total_run_time*10.0) + 5.0) * 0.05, make_vec(1,1,1,1));
+
+                draw_circle(hit_point, (sinf(app.total_run_time*10.0) + 5.0) * 0.05, make_vec(1,1,1,1));
+
+                return { hit_point, dist_to_seg };
             }
         }
 
@@ -585,7 +624,11 @@ void raycast(Planet* planet, vec2 origin, direction) {
         };
 
         draw_quad(tr, 0, color_quad);
+
+        traverse(*state);
     }
+
+    return {};
 }
 
 void world_update() {
@@ -612,9 +655,18 @@ void world_update() {
         update_entity(e);
     }
 
+    if key_pressed(Key.enter) {
+        player = null;
+    }
+
     if player {
         update_player(player);
     } else {
+
+        // camera.pos = camera.pos + Input.wasd * (1.0 + 10.0 * key_down(Key.left_shift));
+        // camera.rot += input_axis('Q', 'E') * dt;
+
+        mouse_drag_control(*camera);
 
     }
 
@@ -720,8 +772,9 @@ void world_update() {
         vec4_one, vec4_zero, vec4_zero);
 
 
-    let planet = player.planet;
-    if planet {
+
+    if player and player.planet {
+        let planet = player.planet;
         Draw2D_Instance_Data data = {
             pos            = make_vec(planet.tr.pos, 0),
             rot            = 0,

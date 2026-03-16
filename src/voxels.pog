@@ -408,12 +408,86 @@ struct Ray {
 }
 
 struct Cell {
-    float32[4] voxel_data;
+    uint32 i1;
+    uint32 i2;
+    uint32 i3;
+    uint32 i4;
+
+    float32 p1;
+    float32 p2;
+    float32 p3;
+    float32 p4;
+
     ivec2 coord;
-    Lineseg seg;
     uint8 mask;
 }
 
+Cell get_cell(VoxelGrid* grid, ivec2 coord) {
+
+    // int32 res = grid.res as int32;
+    // if ix < 0 or ix >= res-1 return false;
+    // if iy < 0 or iy >= res-1 return false;
+
+    uint32 x = coord.x as uint32;
+    uint32 y = coord.y as uint32;
+
+    Cell cell = {};
+    cell.coord = coord;
+
+    cell.i1 = get_index(grid.res, x, y + 1);
+    cell.i2 = get_index(grid.res, x + 1, y + 1);
+    cell.i3 = get_index(grid.res, x, y);
+    cell.i4 = get_index(grid.res, x + 1, y);
+
+    cell.p1 = grid.data[cell.i1];
+    cell.p2 = grid.data[cell.i2];
+    cell.p3 = grid.data[cell.i3];
+    cell.p4 = grid.data[cell.i4];
+
+    cell.mask = get_mask(cell.p1, cell.p2, cell.p3, cell.p4);
+
+    return cell;
+}
+
+Lineseg get_lineseg(Cell c) {
+
+    float32 p1 = c.p1;
+    float32 p2 = c.p2;
+    float32 p3 = c.p3;
+    float32 p4 = c.p4;
+
+    float32 q1 = 1 - p1;
+    float32 q2 = 1 - p2;
+    float32 q4 = 1 - p4;
+
+    switch (c.mask) {
+        case TopLeftBit:                      return { make_vec(p1, 1), make_vec(0, q1) };
+        case TopRightBit:                     return { make_vec(1, q2), make_vec(q2, 1) };
+        case BottomRightBit:                  return { make_vec(q4, 0), make_vec(1, p4) };
+        case BottomLeftBit:                   return { make_vec(0, p3), make_vec(p3, 0) };
+        case 0x0F & ~TopLeftBit:              return { make_vec(0, p3), make_vec(q2, 1) };
+        case 0x0F & ~TopRightBit:             return { make_vec(p1, 1), make_vec(1, p4) };
+        case 0x0F & ~BottomRightBit:          return { make_vec(1, q2), make_vec(p3, 0) };
+        case 0x0F & ~BottomLeftBit:           return { make_vec(q4, 0), make_vec(0, q1) };
+        case TopLeftBit | TopRightBit:        return { make_vec(1, q2), make_vec(0, q1) };
+        case BottomLeftBit | BottomRightBit:  return { make_vec(0, p3), make_vec(1, p4) };
+        case TopLeftBit | BottomLeftBit:      return { make_vec(p1, 1), make_vec(p3, 0) };
+        case TopRightBit | BottomRightBit:    return { make_vec(q4, 0), make_vec(q2, 1) };
+
+        // // diagonals
+        // case TopLeftBit | BottomRightBit: break;
+        // case TopRightBit | BottomLeftBit: break;
+
+        // solid block
+        case 0x0F: return {};
+        // air
+        case 0x0: return {};
+
+        default: return {};
+    }
+}
+
+// TODO: get_lineseg() takes transform for no reason
 bool get_lineseg(VoxelGrid* grid, Transform2D tr, int32 ix, iy, Lineseg* seg) {
     @seg = {};
 
@@ -528,18 +602,20 @@ bool point_intersects(VoxelGrid* grid, Transform2D tr, vec2 point, Intersection2
     int32 x = point.x as int32;
     int32 y = point.y as int32;
 
-    Lineseg seg = {};
-    if get_lineseg(grid, tr, x, y, *seg) {
-        vec2 local = point - make_vec(x, y) - seg.start;
-        vec2 normal = normalize(rot90deg(seg.end - seg.start));
+    Cell cell = get_cell(grid, make_ivec(x, y));
+    Lineseg seg = get_lineseg(cell);
 
-        out_intersection.distance = dot(normal, local);
-        out_intersection.surface_normal = rotate_vec(normal, tr.rot);
+    if cell.mask == 0 return false;
+    if cell.mask == 0x0F return true;
 
-        if out_intersection.distance <= 0 return true;
-    }
 
-    return false;
+    vec2 local = point - make_vec(x, y) - seg.start;
+    vec2 normal = normalize(rot90deg(seg.end - seg.start));
+
+    out_intersection.distance = dot(normal, local);
+    out_intersection.surface_normal = rotate_vec(normal, tr.rot);
+
+    return out_intersection.distance < 0;
 }
 
 bool circle_intersects(VoxelGrid* grid, Transform2D tr, vec2 center, float32 radius, Intersection2D* inter) {
@@ -571,18 +647,16 @@ bool circle_intersects(VoxelGrid* grid, Transform2D tr, vec2 center, float32 rad
             draw_circle(get_world_coords(grid, tr, v + seg.end  ), 0.1, make_vec(0,1,0, 0.2));
             draw_circle(get_world_coords(grid, tr, p),             0.1, make_vec(0,1,1, 0.2));
 
-            // TODO: we should return intersection of linesegment with greatest distance
-            if d <= 0 {
+            if d < 0 and d < inter.distance {
                 inter.distance = d;
                 inter.surface_normal = rotate_vec(normalize(rot90deg(seg.end - seg.start)), tr.rot);
 
                 inter.cell = make_ivec(x, y);
-                return true;
             }
         }
     }
 
-    return false;
+    return inter.distance < 0;
 }
 
 
