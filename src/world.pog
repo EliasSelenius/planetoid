@@ -19,17 +19,21 @@ World make_world() {
     return w;
 }
 
-const Item_Count = 3;
+const Item_Count = Item_Type.Count;
 enum Item_Type {
     Grenade;
     Drill;
     Bazooka;
+    Terrain_Manipulator;
+
+    Count;
 }
 
 string item_name(Item_Type it) switch (it) {
     case .Grenade:  return make_string("Grenade");
     case .Drill:    return make_string("Drill");
     case .Bazooka:  return make_string("Bazooka");
+    case .Terrain_Manipulator: return make_string("Terrain Manipulator");
 
     default: return make_string("");
 }
@@ -159,7 +163,7 @@ Entity* spawn_guy(vec2 pos) {
     let en = spawn_entity(db_quad);
     en.en_type = .Guy;
     en.tex = *player_texture;
-    en.tr.scale = (1.0 / en.tex.width);
+    en.tr.scale = 1.0; // (1.0 / en.tex.width);
     en.radius = 0.5;
     en.tr.pos = pos;
     en.rb.cof_k = 0.5;
@@ -213,7 +217,7 @@ void draw_trajectory(vec2 pos, vel, float32 mass, cod) {
             vel = vel + down*9.8*dt;
         }
 
-        draw_circle(pos, 0.05, vec4_one);
+        draw_circle(pos, 0.02, vec4_one);
     }
 }
 
@@ -226,7 +230,7 @@ void update_entity(Entity* en) {
     bool collided = false;
 
     if en.planet {
-        draw_circle(en.tr.pos, en.radius, make_vec(1,1,1, 0.3));
+        // draw_circle(en.tr.pos, en.radius, make_vec(1,1,1, 0.3));
 
         float32 fluid_density = 0.5;
         vec2 dragforce = calc_dragforce(en.rb.vel, en.rb.cod, fluid_density);
@@ -499,7 +503,9 @@ void update_player(Entity* en) {
         let walk_dir = right * input.x;
         walk_dir = noz(walk_dir + normal * -dot(walk_dir, normal));
 
-        draw_circle(en.tr.pos + walk_dir, 0.1, vec4_one);
+        // draw_circle(en.tr.pos + walk_dir, 0.1, vec4_one);
+
+        // angle(up, normal)
 
         vec2 target = walk_dir*max_speed;
         tangent_vel = move(tangent_vel, target, steepness_factor*acceleration*dt);
@@ -548,17 +554,52 @@ void update_player(Entity* en) {
                 if mouse_pressed(MouseButton.Left) {
                     remove_circle(*en.planet.grid, en.planet.tr, 1, hit.hit_point);
                 }
-
-                // modify_terrain(en.planet);
             }
         } break;
 
         case .Bazooka: {
+            let mouse_coord = getMouseWorldCoord();
+            let diff = mouse_coord - en.tr.pos;
+            let dir = noz(diff);
+
+
+            vec2 en_sprite_size = {en.tex.width, en.tex.height};
+            vec2 assrifle_size = {texture_assrifle.width, texture_assrifle.height};
+
+            vec2 pivot = {-4, -4} / assrifle_size;
+
+            vec2 hand = {6, -2} / en_sprite_size;
+            vec2 gun_pos = local2world(en.tr, hand);
+
+            vec2 muzzle_pos = {16, 1} / assrifle_size - pivot;
+
+            vec2 hypo = muzzle_pos - pivot;
+
+            Transform2D gun_tr = {pos = gun_pos,
+                                  scale = 1,
+                                  rot = sign_angle(mouse_coord - gun_pos, vec2_unit_x)};
+
+            vec2 muzzle_world_pos = local2world(gun_tr, muzzle_pos);
+
+
+            let ins_data = make_ins_data(gun_tr, 0, pivot, vec2_one);
+            draw_texture(*draw2d_renderer.batch, db_quad, texture_assrifle.gl_handle, ins_data);
+
             if en.planet {
-                let mouse_coord = getMouseWorldCoord();
-                let diff = mouse_coord - en.tr.pos;
-                let dir = noz(diff);
-                raycast(en.planet, en.tr.pos, dir);
+                raycast(en.planet, muzzle_world_pos, noz(mouse_coord - gun_tr.pos));
+            }
+
+
+
+            // if en.planet {
+            //     raycast(en.planet, en.tr.pos, dir);
+            // }
+        } break;
+
+        case .Terrain_Manipulator: {
+            if en.planet {
+                draw_grid(en.planet.tr, getMouseWorldCoord(), make_vec(0,1,0,0.5));
+                modify_terrain(en.planet);
             }
         } break;
     }
@@ -609,6 +650,8 @@ Raycast_Result raycast(Planet* planet, vec2 origin, direction) {
 
 
                 draw_circle(hit_point, (sinf(app.total_run_time*10.0) + 5.0) * 0.05, make_vec(1,1,1,1));
+
+                draw_line(origin, hit_point, 0.05);
 
                 return { hit_point, dist_to_seg };
             }
@@ -743,17 +786,11 @@ void world_update() {
     }
 
     for 0 .. entities_count {
-        let e = *entities[it];
-        if is_inactive(e) continue;
+        let en = *entities[it];
+        if is_inactive(en) continue;
 
-        draw_texture(
-            e.db,
-            e.tr,
-            0,
-            e.tex,
-            false,
-            vec2_zero, vec2_one,
-            vec4_one, vec4_zero, vec4_zero);
+        let ins_data = make_ins_data(en.tr, 0, vec2_zero, vec2_one);
+        draw_texture(*draw2d_renderer.batch, db_quad, en.tex.gl_handle, ins_data);
     }
 
 

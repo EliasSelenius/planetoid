@@ -637,15 +637,19 @@ bool circle_intersects(VoxelGrid* grid, Transform2D tr, vec2 center, float32 rad
         Lineseg seg = {};
         if get_lineseg(grid, tr, x, y, *seg) {
             let v = make_vec(x, y);
-            let p = closest_point_on_linesegment(v + seg.start,
-                                                 v + seg.end,
-                                                 center);
+            vec2 a = v + seg.start;
+            vec2 b = v + seg.end;
+
+            let p = closest_point_on_linesegment(a, b, center);
             let d = circle_dist(center, radius, p, 0);
 
-            draw_circle(get_world_coords(grid, tr, center),        0.1, make_vec(1,1,0, 0.2));
-            draw_circle(get_world_coords(grid, tr, v + seg.start), 0.1, make_vec(0,1,0, 0.2));
-            draw_circle(get_world_coords(grid, tr, v + seg.end  ), 0.1, make_vec(0,1,0, 0.2));
-            draw_circle(get_world_coords(grid, tr, p),             0.1, make_vec(0,1,1, 0.2));
+            if false {
+                float32 r = 0.03;
+                draw_circle(get_world_coords(grid, tr, center), r, make_vec(1,1,0, 0.2));
+                draw_circle(get_world_coords(grid, tr, a), r, make_vec(0,1,0, 0.2));
+                draw_circle(get_world_coords(grid, tr, b), r, make_vec(0,1,0, 0.2));
+                draw_circle(get_world_coords(grid, tr, p), r, make_vec(0,1,1, 0.2));
+            }
 
             if d < 0 and d < inter.distance {
                 inter.distance = d;
