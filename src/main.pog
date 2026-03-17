@@ -132,6 +132,17 @@ void draw_quad(Transform2D tr, float32 depth, vec4 color) {
         color, vec4_zero, vec4_zero);
 }
 
+void draw_line(vec2 a, b, float32 thickness) {
+    Transform2D tr = {pos = (a + b) / 2.0,
+                      rot = sign_angle(b-a, vec2_unit_y),
+                      scale = 1};
+
+    vec2 scale = {thickness, dist(a, b)};
+    let ins_data = make_ins_data(tr, 0.0, vec2_zero, scale);
+
+    draw_texture(*draw2d_renderer.batch, db_quad, white_texture.gl_handle, ins_data);
+}
+
 void on_event(AppEvent event) switch event.kind {
 }
 
@@ -172,10 +183,6 @@ void main() {
             case .World: world_update(); break;
             case .Galaxy: galaxy_update(); break;
         }
-
-        draw_grid({scale=1} as Transform2D, getMouseWorldCoord(), make_vec(1,1,1,0.5));
-
-        if player and player.planet  draw_grid(player.planet.tr, getMouseWorldCoord(), make_vec(0,1,0,0.5));
 
         use(*default2d_shader);
         set_mode(drawmode_default2d);
