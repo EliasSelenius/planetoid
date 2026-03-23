@@ -424,9 +424,9 @@ struct Cell {
 
 Cell get_cell(VoxelGrid* grid, ivec2 coord) {
 
-    // int32 res = grid.res as int32;
-    // if ix < 0 or ix >= res-1 return false;
-    // if iy < 0 or iy >= res-1 return false;
+    int32 res = grid.res as int32;
+    if coord.x < 0 or coord.x >= res-1 return {};
+    if coord.y < 0 or coord.y >= res-1 return {};
 
     uint32 x = coord.x as uint32;
     uint32 y = coord.y as uint32;

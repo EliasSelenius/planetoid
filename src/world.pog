@@ -379,13 +379,14 @@ VoxelGrid generate_planet_grid(Planet* planet) {
         float32 value = 0.0;
         float32 max_value = 0.0;
 
-        uint32 octaves = 2;
+        uint32 octaves = 8;
         for 0 .. octaves {
 
             float32 amp = pow(2, it);
             float32 wavelen = amp;
 
-            value += gnoise(p * wavelen) * amp;
+            // value += gnoise(p * wavelen) * 1.25 * amp;
+            value += sdnoise(make_vec(p * wavelen, 100.0), null) * amp;
             max_value += amp;
         }
 
@@ -400,17 +401,13 @@ VoxelGrid generate_planet_grid(Planet* planet) {
     float32 half = grid.res as float32 / 2;
 
     for uint32 ux : 0 .. grid.res   for uint32 uy : 0 .. grid.res {
-
-        float32 xf = ux as float32 - half;
-        float32 yf = uy as float32 - half;
-
-        vec2 p = make_vec(xf, yf);
+        vec2 p = make_vec(ux, uy) - make_vec2(half);
         float32 len_p = length(p);
 
-        const scale = 4.0;
         float32 offset = planet.orbit_dist;
 
-        float32 f = 1.0 / len_p * scale;
+        const scale = 0.025;
+        float32 f = scale / len_p;
         if len_p == 0.0  f = 0;
 
         float32 h = (fbm(p * f + make_vec2(offset)) + 1.0) / 2.0;
@@ -678,8 +675,8 @@ void world_update() {
     let dt = deltatime();
 
     float32 time = app.total_run_time;
-    // time += 10000.0;
     time = 0;
+    // time += 10000.0;
     for i : 0 .. planets_count {
         Planet* planet = *planets[i];
 
