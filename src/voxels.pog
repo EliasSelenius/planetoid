@@ -82,7 +82,7 @@ VoxelGrid createVoxelGrid(uint32 res) {
     grid.inds = list_create(sizeof uint32);
     grid.inds_outline = list_create(sizeof uint32);
 
-    grid.db = create_draw_buffers(sizeof vertex2D, vertex2D_attribs);
+    grid.db = create_draw_buffers(vertex2D_attribs);
 
     glGenBuffers(1, *grid.inds_outline_ebo);
 

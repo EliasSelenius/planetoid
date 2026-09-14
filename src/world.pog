@@ -919,7 +919,7 @@ DrawBuffers genCircle(int32 res, float32 radius) {
 
     inds[i - 1] = 1;
 
-    let db = create_draw_buffers(sizeof vertex2D, vertex2D_attribs);
+    let db = create_draw_buffers(vertex2D_attribs);
     update_buffers(*db, verts, vertsCount, inds, indsCount);
     free(verts);
     free(inds);

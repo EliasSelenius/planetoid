@@ -71,7 +71,7 @@ Key key_player_jump = .space;
 void load_assets() {
 
     player_texture   = load_texture2D("textures/player.bmp");
-    texture_cloud    = load_texture2D("../shared_assets/cloud.bmp");
+    texture_cloud    = white_texture; // load_texture2D("../shared_assets/cloud.bmp");
     texture_assrifle = load_texture2D("textures/assrifle.bmp");
 
     { // genereate image
@@ -167,7 +167,7 @@ void main() {
     while grax_loop() {
 
         if key_pressed('R') {
-            shader_reload(*default2d_shader);
+            shader_reload(Shaders.default2d);
         }
 
         let s = mouse_scroll as float32;
@@ -184,7 +184,7 @@ void main() {
             case .Galaxy: galaxy_update(); break;
         }
 
-        use(*default2d_shader);
+        use(Shaders.default2d);
         set_mode(drawmode_default2d);
         dispatch_sprites(*drawbatch_planets, camera);
         dispatch_sprites(camera);
