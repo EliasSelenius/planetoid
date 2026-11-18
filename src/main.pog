@@ -105,7 +105,7 @@ void load_assets() {
     }
 
     db_circle = genCircle(360, 1);
-    db_quad   = draw2d_renderer.quad_db;
+    db_quad   = draw2d_quad();
 }
 
 void draw_circle(vec2 pos, float32 radius, vec4 color) draw_circle(pos, radius, 0, color);

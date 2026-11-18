@@ -797,7 +797,7 @@ void world_update() {
     Transform2D tr = {};
     tr.scale = (100);
     draw_texture(
-        draw2d_renderer.quad_db,
+        db_quad,
         tr,
         0,
         *white_texture,
